@@ -9,10 +9,10 @@ Este archivo es el punto de entrada permanente para reanudar el proyecto sin dep
 | Proyecto | `factorio-steampunk` |
 | Rama estable | `main` |
 | Rama activa | `agent/prototipo-v0-1` |
-| Fase u objetivo actual | `Prototipo jugable v0.1 — validación del pulso visual de extracción` |
-| Estado | `FX implementado remotamente; build y validación visual posteriores al cambio pendientes` |
-| Commit remoto de referencia | `ef9bc22820e628f767eae7ff62c55fb5ffc41b5f` |
-| Validación | `build previo y arranque base validados por el usuario; nuevo pulso gráfico sólo revisado estructuralmente hasta ahora` |
+| Fase u objetivo actual | `Prototipo jugable v0.1 — validación de navegación DEV Panel y pulso visual` |
+| Estado | `pestañas y FX implementados remotamente; build y validación visual posteriores a los cambios pendientes` |
+| Commit remoto de referencia | `bfdbb529ae0756dce19f33febee05c078c9f6216` |
+| Validación | `build previo y arranque base validados por el usuario; pestañas y nuevo pulso gráfico revisados estructuralmente y pendientes de prueba local` |
 | Cambios locales sin publicar | `ninguno conocido` |
 | Última actualización | `2026-08-07` |
 
@@ -34,7 +34,7 @@ Este archivo es el punto de entrada permanente para reanudar el proyecto sin dep
 
 ## Próximo punto de reanudación
 
-Actualizar la rama local, ejecutar `npm run build` y validar en navegador el pulso concéntrico con 1 anillo por defecto y 2–3 anillos desde el apartado Gráficos del DEV Panel.
+Actualizar la rama local, ejecutar `npm run build` y validar en navegador las pestañas General/Gráficos, el subapartado Efectos de extracción y el pulso concéntrico con 1–3 anillos.
 
 ## Prompt mínimo para un chat nuevo
 
