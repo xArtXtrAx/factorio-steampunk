@@ -48,6 +48,16 @@ export class GameState {
     this.touch();
   }
 
+  resetToDefaults() {
+    this.config = { ...DEFAULT_CONFIG };
+    this.inventory = Object.fromEntries(Object.keys(RESOURCE_TYPES).map((key) => [key, 0]));
+    this.miningTargetId = null;
+    this.miningAccumulator = 0;
+    this.extractionSerial = 0;
+    this.lastExtraction = null;
+    this.regenerateDeposits();
+  }
+
   setConfig(key, value) {
     if (!(key in this.config)) return;
     if (typeof this.config[key] === 'number' && Number.isNaN(Number(value))) return;
