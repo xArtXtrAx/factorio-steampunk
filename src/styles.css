@@ -144,8 +144,27 @@ body {
 }
 .control-fields { display: grid; grid-template-columns: minmax(0, 1fr) 86px; gap: 10px; align-items: center; }
 
+.control-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 8px 10px;
+  border: 1px solid rgba(91, 211, 220, .18);
+  border-radius: 5px;
+  background: rgba(45, 119, 124, .05);
+}
+.control-toggle > span { margin: 0; }
+.control-toggle input[type="checkbox"] {
+  width: 19px;
+  height: 19px;
+  accent-color: #55d6df;
+}
+
 input[type="range"] { accent-color: #55d6df; width: 100%; }
-input[type="number"] {
+input[type="number"],
+input[type="text"],
+select {
   width: 100%;
   padding: 7px 8px;
   border: 1px solid #73522d;
@@ -155,9 +174,27 @@ input[type="number"] {
   color: #f0ddb9;
   font-variant-numeric: tabular-nums;
 }
-input[type="number"]:focus {
+input[type="number"]:focus,
+input[type="text"]:focus,
+select:focus {
   border-color: #62dbe2;
   box-shadow: 0 0 0 2px rgba(98, 219, 226, .12), 0 0 14px rgba(98, 219, 226, .13);
+}
+
+.color-fields {
+  display: grid;
+  grid-template-columns: 54px minmax(0, 1fr);
+  gap: 10px;
+  align-items: center;
+}
+input[type="color"] {
+  width: 54px;
+  height: 34px;
+  padding: 2px;
+  border: 1px solid #73522d;
+  border-radius: 4px;
+  background: #0d0b09;
+  cursor: pointer;
 }
 
 .brass-button {
