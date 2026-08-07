@@ -299,12 +299,12 @@ export class GameRenderer {
     const target = this.state.deposits.find((item) => item.id === this.state.miningTargetId);
     if (target && target.amount > 0) this.drawPulseAtDeposit(target, this.visualMiningClock);
 
-    const rate = Math.max(0.01, Number(config.extractorMiningRate) || 1);
+    const timeScale = Math.max(0.05, Number(config.pulseTimeScale) || 1);
     this.state.extractors.forEach((extractor) => {
       if (!extractor.enabled || extractor.status !== 'trabajando') return;
       const deposit = this.state.deposits.find((item) => item.id === extractor.depositId && item.amount > 0);
       if (!deposit) return;
-      const phase = (extractor.workAccumulator * rate) % 1;
+      const phase = (extractor.workAccumulator / timeScale) % 1;
       this.drawPulseAtDeposit(deposit, phase);
     });
 
