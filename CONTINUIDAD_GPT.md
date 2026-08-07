@@ -11,8 +11,9 @@ Este archivo es el punto de entrada permanente para reanudar el proyecto sin dep
 | Rama activa | `agent/extractor-v0-2` |
 | Fase u objetivo actual | `v0.2 — Extractor de combustión Mk.I` |
 | Estado | `primera automatización alimentada por carbón implementada remotamente con colocación, combustible, render y control DEV; build/validación local pendientes` |
-| Commit remoto de referencia | `4d0415e5cc8d04376b107c887f5b46b6640033b2` |
+| Commit remoto de referencia | `87dfeb86dc5fc2e070c6e5205b93711930cb8d98` |
 | Base estable v0.1 | `merge fe55692aa95adea043c19d8f1f8b121003c5c1d9` |
+| PR activo | `#2 Implementa extractor de combustión Mk.I (draft)` |
 | Validación | `v0.1 ejecutada por el usuario; v0.2 revisada estructuralmente y pendiente de build/recorrido manual` |
 | Cambios locales sin publicar | `ninguno conocido` |
 | Última actualización | `2026-08-07` |
