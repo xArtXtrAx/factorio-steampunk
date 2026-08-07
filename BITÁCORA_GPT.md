@@ -7,92 +7,55 @@
 | Campo | Valor |
 |---|---|
 | Proyecto | `factorio-steampunk` |
-| Objetivo actual | `Prototipo jugable v0.1 — retícula dinámica configurable` |
+| Objetivo actual | `Prototipo jugable v0.1 integrado en main` |
 | Rama estable | `main` |
-| Rama activa | `agent/prototipo-v0-1` |
-| Último checkpoint verificable | `retícula cuadrada 8×8–60×60 configurable en vivo desde DEV Panel` |
-| Estado del build | `último build previo ejecutado localmente sin errores reportados; build posterior a últimos cambios pendiente` |
-| Estado de pruebas | `arranque base validado por usuario; retícula dinámica revisada estructuralmente y pendiente de build/validación manual` |
+| Rama activa | `main` |
+| Último checkpoint verificable | `PR #1 fusionado en main; merge fe55692aa95adea043c19d8f1f8b121003c5c1d9` |
+| Estado del build | `build local previo ejecutado sin errores reportados; build posterior a los últimos cambios todavía pendiente` |
+| Estado de pruebas | `arranque base y apariencia general validados por el usuario; FX, sliders continuos, resets y retícula dinámica pendientes de recorrido final sistemático` |
 | Cambios locales sin publicar | `ninguno conocido` |
 | Bugs abiertos relevantes | `ninguno registrado` |
 | Última actualización | `2026-08-07` |
 
 ## Próximo paso exacto
 
-Actualizar la rama local, ejecutar `npm run build`, abrir el prototipo y validar el slider de tamaño de retícula: debe cambiar dinámicamente entre 8×8 y 60×60, mostrar dimensiones y total de cuadros, conservar las cantidades de los depósitos y mantener todos los recursos dentro de la nueva retícula.
+Actualizar el checkout local a `main`, ejecutar `npm run build` y realizar una pasada de validación manual de la v0.1 integrada: minería, pulso FX, pestañas del DEV Panel, sliders continuos, reset global, reset gráfico y retícula 8×8–60×60.
 
-### Criterio para considerar completado el próximo paso
+### Criterio de validación pendiente
 
-- [x] Layout 2/3 juego y 1/3 DEV Panel implementado.
-- [x] Retícula 30×30 inicial implementada.
-- [x] Tamaño de retícula configurable dinámicamente entre 8×8 y 60×60.
-- [x] DEV Panel muestra dimensiones actuales y total de cuadros.
-- [x] Recursos se recolocan proporcionalmente al redimensionar y conservan sus cantidades.
-- [x] Minería manual por click izquierdo a 1 recurso/segundo por defecto implementada.
-- [x] Pulso concéntrico y controles gráficos implementados.
-- [x] Pestañas `General` y `Gráficos`, sliders continuos y resets global/gráfico implementados.
-- [ ] Build local posterior a los últimos cambios ejecutado y registrado.
-- [ ] Validación manual de retícula dinámica completada y registrada.
+- [x] Prototipo v0.1 implementado.
+- [x] PR #1 fusionado a `main`.
+- [x] Layout 2/3 juego y 1/3 DEV Panel.
+- [x] Retícula inicial 30×30 y tamaño dinámico 8×8–60×60.
+- [x] Recursos se adaptan al relayout y conservan cantidades.
+- [x] Minería manual configurable.
+- [x] Pulso concéntrico parametrizable con 1–6 anillos.
+- [x] DEV Panel con pestañas `General` y `Gráficos`.
+- [x] Sliders con actualización continua durante drag.
+- [x] Reset global y reset gráfico independiente.
+- [ ] `npm run build` ejecutado sobre `main` después de la integración.
+- [ ] Validación manual final de todos los controles y extremos completada.
 
 ## Resumen funcional vigente
 
-### Lo que ya está implementado
+- PixiJS 8.19.0 + Vite 8.1.5.
+- Retícula cuadrada inicial 30×30, configurable entre 8×8 y 60×60 desde `General > Retícula`.
+- El DEV Panel muestra dimensiones actuales y total de cuadros.
+- Los depósitos de carbón, cobre, hierro y piedra se recolocan proporcionalmente al cambiar el tamaño y permanecen dentro del mapa.
+- Minería continua manteniendo click izquierdo, con velocidad configurable.
+- HUD de inventario en vivo.
+- Pulso circular de extracción con glow neón y parámetros configurables en `Gráficos > Efectos de extracción`.
+- Pestañas `General` y `Gráficos`; la pestaña activa se conserva durante actualizaciones.
+- Sliders actualizan el juego continuamente mientras se arrastran.
+- `RESTAURAR VALORES INICIALES` es el reset maestro permanente del juego y debe evolucionar con todos los sistemas futuros.
+- `RESTAURAR VALORES GRÁFICOS` restaura sólo presentación/FX y preserva el estado jugable.
 
-- Shell web con distribución 2/3 juego y 1/3 DEV Panel.
-- Retícula cuadrada con valor inicial 30×30, configurable desde `General > Retícula` entre 8×8 y 60×60.
-- El panel muestra `N × N` y el total de cuadros actuales.
-- PixiJS recalcula automáticamente el tamaño de celda para hacer caber la retícula disponible.
-- Al cambiar N, los depósitos existentes conservan tipo, ID y cantidad y se recolocan proporcionalmente dentro de la nueva cuadrícula; se resuelven colisiones de casilla buscando posiciones cercanas libres.
-- El cambio de retícula detiene una extracción activa para evitar referencias de interacción inconsistentes durante el relayout.
-- Cuatro depósitos: carbón, cobre, hierro y piedra.
-- Extracción continua manteniendo click izquierdo; velocidad configurable y valor inicial de 1 recurso/s.
-- Inventario superior en vivo y regeneración de depósitos desde DEV Panel.
-- Estética steampunk con acentos neón.
-- Pulso circular de extracción parametrizable, con 1–6 anillos y feedback de impacto.
-- Navegación del DEV Panel mediante pestañas `General` y `Gráficos`.
-- Sliders con actualización continua durante drag.
-- Botón global `RESTAURAR VALORES INICIALES` y reset visual independiente.
+## Contratos de estado
 
-### Contrato de restauración
-
-- `resetToDefaults()` es el reset maestro del juego y debe evolucionar con el proyecto para devolver todos los sistemas futuros a su estado inicial.
-- `DEFAULT_CONFIG` mantiene como valor inicial `gridColumns: 30` y `gridRows: 30`, por lo que el reset global devuelve también la retícula a 30×30.
-- `resetGraphicsToDefaults()` restaura exclusivamente el aspecto visual y no modifica tamaño de retícula, simulación, inventario ni depósitos.
-- `DEFAULT_GRAPHICS_CONFIG` es la fuente de verdad del preset visual inicial y forma parte de `DEFAULT_CONFIG`.
-
-### Preset gráfico inicial
-
-- Brillo retícula: `0.55`.
-- Anillos: `1`.
-- Diámetro inicial: `1.20×` celda.
-- Diámetro final: `0.08×` celda.
-- Opacidad inicial: `0.10`.
-- Opacidad de impacto: `0.80`.
-- Grosor: `2 px`.
-- Glow: `8 px`.
-- Intensidad glow: `0.65`.
-- Color anillo: `#58FFE3`.
-- Color glow: `#00FFD5`.
-- Curva: `Ease In`.
-- Flash: `0.35`.
-- Fade: `120 ms`.
-- Multiplicador temporal: `1.00×`.
-- Separación con múltiples anillos: `0.18` del ciclo.
-
-### Lo ya validado localmente
-
-- Instalación/entorno suficientes para ejecutar el proyecto antes de los últimos cambios.
-- Build anterior sin errores reportados.
-- Servidor de desarrollo y apertura de la aplicación en navegador.
-- Apariencia general del prototipo valorada positivamente por el usuario.
-
-### Lo que todavía falta validar
-
-- Build después de los cambios recientes.
-- Redimensionado sostenido 8×8 → 60×60 → 30×30 sin recursos fuera de rango.
-- Legibilidad y rendimiento visual en extremos de tamaño de retícula.
-- Interacción de minería después de cada relayout.
-- Resets global/gráfico y sliders continuos tras integrar la retícula dinámica.
+- `DEFAULT_CONFIG` es la fuente de verdad del estado/configuración inicial global.
+- `DEFAULT_GRAPHICS_CONFIG` contiene el preset visual inicial y forma parte de `DEFAULT_CONFIG`.
+- `resetToDefaults()` debe devolver siempre todos los sistemas del juego a su estado inicial.
+- `resetGraphicsToDefaults()` sólo debe modificar parámetros visuales.
 
 ## Arquitectura vigente
 
@@ -101,94 +64,73 @@ Actualizar la rama local, ejecutar `npm run build`, abrir el prototipo y validar
 - Renderer: PixiJS 8.19.0.
 - Tooling: Vite 8.1.5.
 - Persistencia: todavía no existe.
-- Entrada inicial: mouse.
 - Módulos principales:
-  - `src/game/config.js`: recursos, `DEFAULT_CONFIG` y `DEFAULT_GRAPHICS_CONFIG`.
-  - `src/game/state.js`: estado, simulación, redimensionado de retícula, eventos de extracción y resets.
-  - `src/game/renderer.js`: layout dinámico, retícula, recursos, interacción y capa FX.
-  - `src/ui/devPanel.js`: tabs, controles, slider de retícula, sliders continuos y acciones de restauración.
+  - `src/game/config.js`: recursos y presets de configuración.
+  - `src/game/state.js`: simulación, minería, retícula dinámica y resets.
+  - `src/game/renderer.js`: retícula, recursos, interacción y FX.
+  - `src/ui/devPanel.js`: pestañas y controles vivos.
   - `src/main.js`: composición de aplicación y HUD.
 
 ## Decisiones activas
 
 | ID | Decisión | Motivo | Referencia |
 |---|---|---|---|
-| `ADR-001` | PixiJS + Vite y separación simulación/render/UI | Rendimiento 2D, efectos y expansión modular | `docs/decisiones/ADR-001-arquitectura-web.md` |
-| `FX-001` | Pulso como capa independiente y parametrizable | Permite tuning visual sin acoplar balance y renderer de recursos | esta bitácora |
-| `UI-001` | Crecimiento del DEV Panel mediante pestañas | Evita una columna monolítica a medida que aumenten parámetros | esta bitácora |
-| `UI-002` | Suspender rerender del panel durante drag de ranges | Evita reemplazar el elemento nativo mientras el usuario lo arrastra | esta bitácora |
-| `STATE-001` | Reset global y presets parciales componibles | Permite restaurar todo el juego o sólo un dominio sin duplicar valores iniciales | esta bitácora |
-| `GRID-001` | Retícula cuadrada variable con adaptación proporcional de depósitos | Permite experimentar con escala de mapa sin destruir el estado de recursos | esta bitácora |
+| `ADR-001` | PixiJS + Vite y separación simulación/render/UI | Rendimiento 2D y expansión modular | `docs/decisiones/ADR-001-arquitectura-web.md` |
+| `FX-001` | Pulso como capa independiente y parametrizable | Tuning visual desacoplado del balance | esta bitácora |
+| `UI-001` | DEV Panel escalable mediante pestañas | Evitar una columna monolítica | esta bitácora |
+| `UI-002` | Suspender rerender del panel durante drag | Mantener captura continua del slider | esta bitácora |
+| `STATE-001` | Reset global y presets parciales componibles | Restauración coherente conforme crezca el juego | esta bitácora |
+| `GRID-001` | Retícula cuadrada variable con adaptación de depósitos | Experimentar con escala sin perder estado | esta bitácora |
 
-## Riesgos, deuda y bloqueos
+## Riesgos y validación pendiente
 
-| Estado | Riesgo o bloqueo | Impacto | Acción siguiente |
-|---|---|---|---|
-| Abierto | Últimos cambios no compilados todavía | medio | ejecutar `npm run build` localmente |
-| Abierto | Retícula 60×60 no validada visualmente en resolución objetivo | bajo | probar extremo máximo en navegador |
-| Abierto | Parámetros extremos de 6 anillos no validados en rendimiento | bajo | probar presets extremos en navegador |
+| Estado | Riesgo | Acción siguiente |
+|---|---|---|
+| Abierto | Últimos cambios no compilados todavía sobre `main` | ejecutar `npm run build` |
+| Abierto | Retícula 60×60 no recorrida sistemáticamente en resolución objetivo | validar extremos 8×8 y 60×60 |
+| Abierto | 6 anillos y parámetros FX extremos no validados en rendimiento | probar configuración máxima |
 
-## Cómo ejecutar el proyecto
+## Cómo ejecutar y verificar
 
 ```bash
 npm install
+npm run build
 npm run dev
 ```
 
-## Cómo verificarlo
-
-```bash
-npm run build
-```
-
-Después validar manualmente: mover `Tamaño de retícula (N × N)` entre 8 y 60, confirmar el contador de cuadros, revisar que todos los depósitos permanezcan visibles y después restaurar valores iniciales para confirmar retorno a 30×30.
+Después validar en navegador el flujo completo de la v0.1.
 
 ## Historial cronológico
 
+### 2026-08-07 — Integración de prototipo v0.1 en main
+
+- PR #1 `Implementa prototipo jugable v0.1` marcado listo y fusionado correctamente.
+- Merge commit: `fe55692aa95adea043c19d8f1f8b121003c5c1d9`.
+- No había bugs registrados al integrar.
+- La rama y `main` habían divergido por actualizaciones documentales; GitHub resolvió la fusión correctamente sin reescritura destructiva.
+- Se mantiene explícitamente pendiente el build y la validación manual final de los cambios más recientes.
+
 ### 2026-08-07 — Retícula dinámica configurable
 
-**Rama:** `agent/prototipo-v0-1`
-
-- Añadido bloque `Retícula` en la pestaña `General`.
-- Añadido slider/entrada numérica `Tamaño de retícula (N × N)` de 8 a 60.
-- Añadido indicador de dimensiones actuales y número total de cuadros.
-- Añadido `setGridSize()` en `GameState` para modificar filas y columnas conjuntamente.
-- Los depósitos conservan cantidades y se recolocan proporcionalmente; las colisiones se resuelven buscando una casilla libre cercana.
-- El renderer existente ya calcula el layout desde `gridColumns/gridRows`, por lo que celdas, recursos y FX se adaptan sin una ruta de render separada.
-- Revisión estructural remota realizada; build y validación manual pendientes.
+- Añadido control 8×8–60×60, indicador de tamaño y total de cuadros.
+- Los recursos conservan cantidades y se recolocan dentro de la nueva retícula.
 
 ### 2026-08-07 — Resets global y gráfico independientes
 
-- Creado `DEFAULT_GRAPHICS_CONFIG`.
-- Añadido `resetGraphicsToDefaults()` y botón gráfico independiente.
-- Conservado `resetToDefaults()` como contrato de reset completo del juego.
+- Formalizados `DEFAULT_CONFIG`, `DEFAULT_GRAPHICS_CONFIG`, reset maestro y reset visual.
 
-### 2026-08-07 — Reset global del DEV Panel
+### 2026-08-07 — Arrastre continuo y navegación del DEV Panel
 
-- Añadido botón global `RESTAURAR VALORES INICIALES`.
+- Añadidas pestañas `General`/`Gráficos` y sliders continuos durante drag.
 
-### 2026-08-07 — Arrastre continuo de sliders
+### 2026-08-07 — Pulso gráfico de extracción
 
-- Se mantiene el evento nativo `input` durante drag y se suspende temporalmente el rerender del panel.
+- Añadido pulso concéntrico sincronizado con extracción y soporte para 1–6 anillos.
 
-### 2026-08-07 — Primera navegación por pestañas del DEV Panel
+### 2026-08-07 — Validación local inicial
 
-- Añadidas pestañas `General` y `Gráficos` y subapartado `Efectos de extracción`.
-
-### 2026-08-07 — Pulso gráfico de extracción parametrizable
-
-- Añadido pulso concéntrico sincronizado con cada unidad extraída y soporte para 1–6 anillos.
-
-### 2026-08-07 — Validación local inicial por el usuario
-
-- Build local previo sin errores reportados.
-- Servidor de desarrollo y aplicación abiertos correctamente en navegador.
-
-### 2026-08-07 — Prototipo web v0.1 implementado
-
-- Implementados estado, minería, renderer, HUD y DEV Panel modular.
-- Añadida dirección visual steampunk/neón.
+- Build inicial sin errores reportados por el usuario y aplicación abierta correctamente en navegador.
 
 ### 2026-08-07 — Inicialización del repositorio
 
-- Se establecieron `CONTINUIDAD_GPT.md`, `AGENTS.md`, `BITÁCORA_GPT.md`, `BUGS.md`, ADR y template de PR conforme al repositorio de reglas.
+- Establecidos continuidad, reglas, registro de bugs, ADR y flujo de PR.
