@@ -92,15 +92,20 @@ function selectControl(label, value, options, onInput) {
   return row;
 }
 
+function tabButton(label, tabId, activeTab, onSelect) {
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.className = `dev-tab${activeTab === tabId ? ' is-active' : ''}`;
+  button.textContent = label;
+  button.setAttribute('aria-selected', String(activeTab === tabId));
+  button.addEventListener('click', () => onSelect(tabId));
+  return button;
+}
+
 export function mountDevPanel(state, host) {
-  const render = () => {
-    host.replaceChildren();
+  let activeTab = 'general';
 
-    const title = document.createElement('div');
-    title.className = 'panel-title';
-    title.innerHTML = '<small>FORGE CONTROL</small><h1>DEV PANEL</h1><p>Parámetros vivos de simulación y presentación</p>';
-    host.append(title);
-
+  const renderGeneral = () => {
     const simulation = document.createElement('section');
     simulation.className = 'dev-section';
     simulation.innerHTML = '<h2>Simulación</h2>';
@@ -117,12 +122,37 @@ export function mountDevPanel(state, host) {
     simulation.append(regenerate);
     host.append(simulation);
 
-    const graphics = document.createElement('section');
-    graphics.className = 'dev-section';
-    graphics.innerHTML = '<h2>Gráficos · Pulso de extracción</h2>';
-    graphics.append(
-      toggleControl('Activar pulso', state.config.pulseEnabled, (value) => state.setConfig('pulseEnabled', value)),
+    const inventory = document.createElement('section');
+    inventory.className = 'dev-section';
+    inventory.innerHTML = '<h2>Inventario</h2>';
+    Object.entries(RESOURCE_TYPES).forEach(([type, meta]) => {
+      inventory.append(numberControl(meta.label, state.inventory[type], 0, 100000, 1, (value) => state.setInventory(type, value)));
+    });
+    host.append(inventory);
+
+    const deposits = document.createElement('section');
+    deposits.className = 'dev-section';
+    deposits.innerHTML = '<h2>Depósitos activos</h2>';
+    state.deposits.forEach((deposit) => {
+      const meta = RESOURCE_TYPES[deposit.type];
+      deposits.append(numberControl(`${meta.label} [${deposit.x},${deposit.y}]`, deposit.amount, 0, 10000, 1, (value) => state.setDepositAmount(deposit.id, value)));
+    });
+    host.append(deposits);
+  };
+
+  const renderGraphics = () => {
+    const graphicsEnvironment = document.createElement('section');
+    graphicsEnvironment.className = 'dev-section';
+    graphicsEnvironment.innerHTML = '<h2>Entorno gráfico</h2>';
+    graphicsEnvironment.append(
       numberControl('Brillo retícula', state.config.gridGlow, 0.05, 1, 0.05, (value) => state.setConfig('gridGlow', value)),
+    );
+
+    const extractionFx = document.createElement('div');
+    extractionFx.className = 'dev-subsection';
+    extractionFx.innerHTML = '<h3>Efectos de extracción</h3><p class="dev-subsection-note">Feedback visual sincronizado con cada unidad extraída.</p>';
+    extractionFx.append(
+      toggleControl('Activar pulso', state.config.pulseEnabled, (value) => state.setConfig('pulseEnabled', value)),
       numberControl('Cantidad de anillos', state.config.pulseRingCount, 1, 6, 1, (value) => state.setConfig('pulseRingCount', value)),
       numberControl('Separación temporal', state.config.pulseRingSpacing, 0, 0.3, 0.01, (value) => state.setConfig('pulseRingSpacing', value)),
       numberControl('Desfase de tamaño', state.config.pulseRingSizeOffset, -0.15, 0.3, 0.01, (value) => state.setConfig('pulseRingSizeOffset', value)),
@@ -145,24 +175,36 @@ export function mountDevPanel(state, host) {
       numberControl('Fade de impacto (ms)', state.config.pulseFadeMs, 0, 1000, 10, (value) => state.setConfig('pulseFadeMs', value)),
       numberControl('Multiplicador temporal', state.config.pulseTimeScale, 0.1, 3, 0.05, (value) => state.setConfig('pulseTimeScale', value)),
     );
-    host.append(graphics);
 
-    const inventory = document.createElement('section');
-    inventory.className = 'dev-section';
-    inventory.innerHTML = '<h2>Inventario</h2>';
-    Object.entries(RESOURCE_TYPES).forEach(([type, meta]) => {
-      inventory.append(numberControl(meta.label, state.inventory[type], 0, 100000, 1, (value) => state.setInventory(type, value)));
-    });
-    host.append(inventory);
+    graphicsEnvironment.append(extractionFx);
+    host.append(graphicsEnvironment);
+  };
 
-    const deposits = document.createElement('section');
-    deposits.className = 'dev-section';
-    deposits.innerHTML = '<h2>Depósitos activos</h2>';
-    state.deposits.forEach((deposit) => {
-      const meta = RESOURCE_TYPES[deposit.type];
-      deposits.append(numberControl(`${meta.label} [${deposit.x},${deposit.y}]`, deposit.amount, 0, 10000, 1, (value) => state.setDepositAmount(deposit.id, value)));
-    });
-    host.append(deposits);
+  const render = () => {
+    host.replaceChildren();
+
+    const title = document.createElement('div');
+    title.className = 'panel-title';
+    title.innerHTML = '<small>FORGE CONTROL</small><h1>DEV PANEL</h1><p>Parámetros vivos de simulación y presentación</p>';
+    host.append(title);
+
+    const tabs = document.createElement('nav');
+    tabs.className = 'dev-tabs';
+    tabs.setAttribute('aria-label', 'Secciones del panel de desarrollo');
+    tabs.append(
+      tabButton('General', 'general', activeTab, (nextTab) => {
+        activeTab = nextTab;
+        render();
+      }),
+      tabButton('Gráficos', 'graphics', activeTab, (nextTab) => {
+        activeTab = nextTab;
+        render();
+      }),
+    );
+    host.append(tabs);
+
+    if (activeTab === 'graphics') renderGraphics();
+    else renderGeneral();
   };
 
   let scheduled = false;
