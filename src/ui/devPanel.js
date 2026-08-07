@@ -146,7 +146,16 @@ export function mountDevPanel(state, host) {
     const graphicsEnvironment = document.createElement('section');
     graphicsEnvironment.className = 'dev-section';
     graphicsEnvironment.innerHTML = '<h2>Entorno gráfico</h2>';
+
+    const resetGraphics = document.createElement('button');
+    resetGraphics.type = 'button';
+    resetGraphics.className = 'brass-button';
+    resetGraphics.textContent = 'RESTAURAR VALORES GRÁFICOS';
+    resetGraphics.title = 'Restaura únicamente la configuración visual al preset inicial sin modificar simulación, inventario ni depósitos.';
+    resetGraphics.addEventListener('click', () => state.resetGraphicsToDefaults());
+
     graphicsEnvironment.append(
+      resetGraphics,
       numberControl('Brillo retícula', state.config.gridGlow, 0.05, 1, 0.05, (value) => state.setConfig('gridGlow', value)),
     );
 
@@ -209,7 +218,7 @@ export function mountDevPanel(state, host) {
     reset.type = 'button';
     reset.className = 'brass-button';
     reset.textContent = 'RESTAURAR VALORES INICIALES';
-    reset.title = 'Restaura configuración, inventario y depósitos al estado inicial del prototipo.';
+    reset.title = 'Restaura todo el juego al estado inicial: configuración, inventario, depósitos y sistemas futuros incluidos en el preset global.';
     reset.addEventListener('click', () => state.resetToDefaults());
     host.append(reset);
 
