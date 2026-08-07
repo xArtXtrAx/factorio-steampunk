@@ -11,7 +11,7 @@ Este archivo es el punto de entrada permanente para reanudar el proyecto sin dep
 | Rama activa | `agent/prototipo-v0-1` |
 | Fase u objetivo actual | `Prototipo jugable v0.1 — validación de navegación DEV Panel, pulso visual y sliders continuos` |
 | Estado | `pestañas, FX y arrastre continuo de sliders implementados remotamente; build y validación visual posteriores a los cambios pendientes` |
-| Commit remoto de referencia | `0ee0d30cf631c76df159c50e6cb74575f4cc434b` |
+| Commit remoto de referencia | `1b9f166b7028eab4b6467e1a37d9ca1a6ccd19a7` |
 | Validación | `build previo y arranque base validados por el usuario; pestañas, nuevo pulso gráfico y mejora de sliders revisados estructuralmente y pendientes de prueba local` |
 | Cambios locales sin publicar | `ninguno conocido` |
 | Última actualización | `2026-08-07` |
