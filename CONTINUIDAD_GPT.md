@@ -9,10 +9,10 @@ Este archivo es el punto de entrada permanente para reanudar el proyecto sin dep
 | Proyecto | `factorio-steampunk` |
 | Rama estable | `main` |
 | Rama activa | `agent/prototipo-v0-1` |
-| Fase u objetivo actual | `Prototipo jugable v0.1 — validación de navegación DEV Panel, pulso visual y sliders continuos` |
-| Estado | `pestañas, FX y arrastre continuo de sliders implementados remotamente; build y validación visual posteriores a los cambios pendientes` |
-| Commit remoto de referencia | `1b9f166b7028eab4b6467e1a37d9ca1a6ccd19a7` |
-| Validación | `build previo y arranque base validados por el usuario; pestañas, nuevo pulso gráfico y mejora de sliders revisados estructuralmente y pendientes de prueba local` |
+| Fase u objetivo actual | `Prototipo jugable v0.1 — validación de DEV Panel, FX y reset global` |
+| Estado | `pestañas, FX, sliders continuos y restauración global de valores iniciales implementados remotamente; build y validación visual posteriores a los cambios pendientes` |
+| Commit remoto de referencia | `8eccda7b288238a6b58e49c51247843d7e980149` |
+| Validación | `build previo y arranque base validados por el usuario; cambios recientes revisados estructuralmente y pendientes de prueba local` |
 | Cambios locales sin publicar | `ninguno conocido` |
 | Última actualización | `2026-08-07` |
 
@@ -34,7 +34,7 @@ Este archivo es el punto de entrada permanente para reanudar el proyecto sin dep
 
 ## Próximo punto de reanudación
 
-Actualizar la rama local, ejecutar `npm run build` y validar en navegador las pestañas General/Gráficos, el subapartado Efectos de extracción, el pulso concéntrico y el arrastre continuo de sliders mientras se mantiene presionado el thumb.
+Actualizar la rama local, ejecutar `npm run build` y validar en navegador las pestañas General/Gráficos, el pulso de extracción, el arrastre continuo de sliders y el botón `RESTAURAR VALORES INICIALES`, confirmando que devuelve configuración, inventario y depósitos al estado inicial.
 
 ## Prompt mínimo para un chat nuevo
 
