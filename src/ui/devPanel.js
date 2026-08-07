@@ -104,6 +104,8 @@ function tabButton(label, tabId, activeTab, onSelect) {
 
 export function mountDevPanel(state, host) {
   let activeTab = 'general';
+  let rangeDragActive = false;
+  let renderPendingAfterDrag = false;
 
   const renderGeneral = () => {
     const simulation = document.createElement('section');
@@ -209,6 +211,10 @@ export function mountDevPanel(state, host) {
 
   let scheduled = false;
   const requestRender = () => {
+    if (rangeDragActive) {
+      renderPendingAfterDrag = true;
+      return;
+    }
     if (scheduled) return;
     scheduled = true;
     requestAnimationFrame(() => {
@@ -217,6 +223,24 @@ export function mountDevPanel(state, host) {
     });
   };
 
+  const finishRangeDrag = () => {
+    if (!rangeDragActive) return;
+    rangeDragActive = false;
+    if (renderPendingAfterDrag) {
+      renderPendingAfterDrag = false;
+      requestRender();
+    }
+  };
+
+  host.addEventListener('pointerdown', (event) => {
+    if (event.target instanceof HTMLInputElement && event.target.type === 'range') {
+      rangeDragActive = true;
+      renderPendingAfterDrag = false;
+    }
+  });
+  window.addEventListener('pointerup', finishRangeDrag);
+  window.addEventListener('pointercancel', finishRangeDrag);
+  window.addEventListener('blur', finishRangeDrag);
   window.addEventListener('game-state-change', requestRender);
   render();
 }
