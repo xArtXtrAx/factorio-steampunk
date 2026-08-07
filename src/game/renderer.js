@@ -1,6 +1,29 @@
 import { Application, Container, Graphics, Text } from 'pixi.js';
 import { RESOURCE_TYPES } from './config.js';
 
+function clamp(value, min = 0, max = 1) {
+  return Math.max(min, Math.min(max, value));
+}
+
+function lerp(a, b, t) {
+  return a + (b - a) * t;
+}
+
+function ease(type, t) {
+  const x = clamp(t);
+  if (type === 'linear') return x;
+  if (type === 'easeOut') return 1 - ((1 - x) ** 3);
+  if (type === 'easeInOut') return x < 0.5 ? 4 * x ** 3 : 1 - ((-2 * x + 2) ** 3) / 2;
+  return x ** 3;
+}
+
+function colorNumber(value, fallback) {
+  if (typeof value === 'number') return value;
+  const normalized = String(value || '').trim().replace('#', '');
+  const parsed = Number.parseInt(normalized, 16);
+  return Number.isFinite(parsed) ? parsed : fallback;
+}
+
 export class GameRenderer {
   constructor(state, host) {
     this.state = state;
@@ -8,7 +31,12 @@ export class GameRenderer {
     this.app = new Application();
     this.gridLayer = new Graphics();
     this.resourceLayer = new Container();
+    this.fxLayer = new Graphics();
     this.lastVersion = -1;
+    this.lastMiningTargetId = null;
+    this.visualMiningClock = 0;
+    this.lastExtractionSerial = 0;
+    this.impactFlash = null;
   }
 
   async init() {
@@ -20,11 +48,14 @@ export class GameRenderer {
     });
 
     this.host.appendChild(this.app.canvas);
-    this.app.stage.addChild(this.gridLayer, this.resourceLayer);
+    this.app.stage.addChild(this.gridLayer, this.resourceLayer, this.fxLayer);
     this.app.ticker.add((ticker) => this.frame(ticker.deltaMS / 1000));
     window.addEventListener('pointerup', () => this.state.stopMining());
     window.addEventListener('pointercancel', () => this.state.stopMining());
-    window.addEventListener('resize', () => this.drawGrid());
+    window.addEventListener('resize', () => {
+      this.drawGrid();
+      this.redrawResources();
+    });
     this.drawGrid();
     this.redrawResources();
   }
@@ -43,6 +74,15 @@ export class GameRenderer {
       y: Math.floor((height - gridHeight) / 2),
       gridWidth,
       gridHeight,
+    };
+  }
+
+  getDepositCenter(deposit) {
+    const { cell, x, y } = this.getLayout();
+    return {
+      cell,
+      cx: x + deposit.x * cell + cell / 2,
+      cy: y + deposit.y * cell + cell / 2,
     };
   }
 
@@ -101,8 +141,109 @@ export class GameRenderer {
     });
   }
 
+  updateFxClock(deltaSeconds) {
+    const targetId = this.state.miningTargetId;
+    if (targetId !== this.lastMiningTargetId) {
+      this.visualMiningClock = 0;
+      this.lastMiningTargetId = targetId;
+    }
+
+    if (!targetId) return;
+    const timeScale = Math.max(0.05, Number(this.state.config.pulseTimeScale) || 1);
+    this.visualMiningClock += (deltaSeconds * this.state.config.miningRate) / timeScale;
+    this.visualMiningClock %= 1;
+  }
+
+  captureImpact() {
+    if (this.state.extractionSerial === this.lastExtractionSerial) return;
+    this.lastExtractionSerial = this.state.extractionSerial;
+    const extraction = this.state.lastExtraction;
+    if (!extraction) return;
+    const deposit = this.state.deposits.find((item) => item.id === extraction.depositId);
+    if (!deposit) return;
+    this.impactFlash = { deposit, elapsedMs: 0 };
+  }
+
+  drawMiningPulse(deltaSeconds) {
+    const config = this.state.config;
+    this.fxLayer.clear();
+    if (!config.pulseEnabled) return;
+
+    const target = this.state.deposits.find((item) => item.id === this.state.miningTargetId);
+    const pulseColor = colorNumber(config.pulseColor, 0x58ffe3);
+    const glowColor = colorNumber(config.pulseGlowColor, 0x00ffd5);
+
+    if (target && target.amount > 0) {
+      const { cell, cx, cy } = this.getDepositCenter(target);
+      const count = Math.max(1, Math.round(config.pulseRingCount));
+      const requestedSpacing = Math.max(0, config.pulseRingSpacing);
+      const spacing = count > 1 ? Math.min(requestedSpacing, 0.8 / (count - 1)) : 0;
+      const totalDelay = spacing * (count - 1);
+      const ringLife = Math.max(0.2, 1 - totalDelay);
+
+      for (let index = 0; index < count; index += 1) {
+        const delay = index * spacing;
+        const phase = (this.visualMiningClock - delay) / ringLife;
+        if (phase < 0 || phase >= 1) continue;
+
+        const eased = ease(config.pulseEasing, phase);
+        const sizeOffset = 1 + index * config.pulseRingSizeOffset;
+        const startRadius = cell * config.pulseStartScale * sizeOffset * 0.5;
+        const endRadius = cell * config.pulseEndScale * 0.5;
+        const radius = Math.max(0.5, lerp(startRadius, endRadius, eased));
+        const alpha = clamp(lerp(config.pulseStartAlpha, config.pulseImpactAlpha, eased));
+        const lineWidth = Math.max(0.5, config.pulseLineWidth);
+        const glowSize = Math.max(0, config.pulseGlowSize);
+        const glowIntensity = clamp(config.pulseGlowIntensity);
+
+        if (glowSize > 0 && glowIntensity > 0) {
+          this.fxLayer.circle(cx, cy, radius).stroke({
+            color: glowColor,
+            width: lineWidth + glowSize * 2,
+            alpha: alpha * glowIntensity * 0.16,
+          });
+          this.fxLayer.circle(cx, cy, radius).stroke({
+            color: glowColor,
+            width: lineWidth + glowSize * 0.8,
+            alpha: alpha * glowIntensity * 0.38,
+          });
+        }
+
+        this.fxLayer.circle(cx, cy, radius).stroke({
+          color: pulseColor,
+          width: lineWidth,
+          alpha,
+        });
+      }
+    }
+
+    if (!this.impactFlash) return;
+    const flashMs = Math.max(1, config.pulseFadeMs);
+    this.impactFlash.elapsedMs += deltaSeconds * 1000;
+    const t = clamp(this.impactFlash.elapsedMs / flashMs);
+    const { cell, cx, cy } = this.getDepositCenter(this.impactFlash.deposit);
+    const flashAlpha = clamp(config.pulseImpactFlash) * (1 - t) ** 2;
+    const flashRadius = cell * lerp(config.pulseEndScale * 0.5, 0.28, t);
+
+    this.fxLayer.circle(cx, cy, Math.max(1, flashRadius)).fill({
+      color: pulseColor,
+      alpha: flashAlpha * 0.22,
+    });
+    this.fxLayer.circle(cx, cy, Math.max(1, flashRadius)).stroke({
+      color: glowColor,
+      width: Math.max(2, config.pulseGlowSize * (1 - t)),
+      alpha: flashAlpha,
+    });
+
+    if (t >= 1) this.impactFlash = null;
+  }
+
   frame(deltaSeconds) {
     this.state.tick(deltaSeconds);
+    this.updateFxClock(deltaSeconds);
+    this.captureImpact();
+    this.drawMiningPulse(deltaSeconds);
+
     if (this.lastVersion !== this.state.version) {
       this.drawGrid();
       this.redrawResources();
