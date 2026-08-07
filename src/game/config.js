@@ -48,6 +48,10 @@ export const DEFAULT_CONFIG = {
   extractorFuelBufferCapacity: 5,
   extractorAutoLoadFuel: true,
   extractorCoalSelfFeed: true,
+  extractorCostIron: 20,
+  extractorCostCopper: 10,
+  extractorCostStone: 10,
+  extractorCostCoal: 0,
 
   ...DEFAULT_GRAPHICS_CONFIG,
 };
