@@ -5,16 +5,8 @@ export const RESOURCE_TYPES = {
   stone: { label: 'Piedra', color: 0x8a8174, glow: 0xd9c4a1 },
 };
 
-export const DEFAULT_CONFIG = {
-  referenceWidth: 1920,
-  referenceHeight: 1080,
-  gridColumns: 30,
-  gridRows: 30,
-  miningRate: 1,
-  initialDepositAmount: 100,
-  spawnRadius: 5,
+export const DEFAULT_GRAPHICS_CONFIG = {
   gridGlow: 0.55,
-
   pulseEnabled: true,
   pulseRingCount: 1,
   pulseRingSpacing: 0.18,
@@ -32,4 +24,15 @@ export const DEFAULT_CONFIG = {
   pulseImpactFlash: 0.35,
   pulseFadeMs: 120,
   pulseTimeScale: 1,
+};
+
+export const DEFAULT_CONFIG = {
+  referenceWidth: 1920,
+  referenceHeight: 1080,
+  gridColumns: 30,
+  gridRows: 30,
+  miningRate: 1,
+  initialDepositAmount: 100,
+  spawnRadius: 5,
+  ...DEFAULT_GRAPHICS_CONFIG,
 };
