@@ -205,6 +205,14 @@ export function mountDevPanel(state, host) {
     );
     host.append(tabs);
 
+    const reset = document.createElement('button');
+    reset.type = 'button';
+    reset.className = 'brass-button';
+    reset.textContent = 'RESTAURAR VALORES INICIALES';
+    reset.title = 'Restaura configuración, inventario y depósitos al estado inicial del prototipo.';
+    reset.addEventListener('click', () => state.resetToDefaults());
+    host.append(reset);
+
     if (activeTab === 'graphics') renderGraphics();
     else renderGeneral();
   };
