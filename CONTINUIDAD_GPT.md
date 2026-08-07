@@ -9,10 +9,10 @@ Este archivo es el punto de entrada permanente para reanudar el proyecto sin dep
 | Proyecto | `factorio-steampunk` |
 | Rama estable | `main` |
 | Rama activa | `agent/prototipo-v0-1` |
-| Fase u objetivo actual | `Prototipo jugable v0.1 — validación funcional` |
-| Estado | `implementado remotamente y arrancado localmente; validación funcional detallada pendiente` |
-| Commit remoto de referencia | `5c7170a3cb942687df57c5b0bfe883dd8145207e` |
-| Validación | `build local sin errores reportados; aplicación abierta correctamente en navegador; falta validar sistemáticamente layout, minería, contadores y DEV Panel` |
+| Fase u objetivo actual | `Prototipo jugable v0.1 — validación del pulso visual de extracción` |
+| Estado | `FX implementado remotamente; build y validación visual posteriores al cambio pendientes` |
+| Commit remoto de referencia | `ef9bc22820e628f767eae7ff62c55fb5ffc41b5f` |
+| Validación | `build previo y arranque base validados por el usuario; nuevo pulso gráfico sólo revisado estructuralmente hasta ahora` |
 | Cambios locales sin publicar | `ninguno conocido` |
 | Última actualización | `2026-08-07` |
 
@@ -34,7 +34,7 @@ Este archivo es el punto de entrada permanente para reanudar el proyecto sin dep
 
 ## Próximo punto de reanudación
 
-Recorrer manualmente todas las funciones de v0.1 en navegador: layout, retícula, cuatro depósitos, minería, contadores y controles del DEV Panel. Registrar cualquier incidencia antes de integrar el PR #1.
+Actualizar la rama local, ejecutar `npm run build` y validar en navegador el pulso concéntrico con 1 anillo por defecto y 2–3 anillos desde el apartado Gráficos del DEV Panel.
 
 ## Prompt mínimo para un chat nuevo
 
