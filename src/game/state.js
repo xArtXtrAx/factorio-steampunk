@@ -4,6 +4,10 @@ function randomInt(min, max) {
   return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
+function clampInt(value, min, max) {
+  return Math.max(min, Math.min(max, Math.round(Number(value) || min)));
+}
+
 export class GameState {
   constructor() {
     this.config = { ...DEFAULT_CONFIG };
@@ -60,6 +64,57 @@ export class GameState {
 
   resetGraphicsToDefaults() {
     Object.assign(this.config, DEFAULT_GRAPHICS_CONFIG);
+    this.touch();
+  }
+
+  setGridSize(value) {
+    const nextSize = clampInt(value, 8, 60);
+    const previousColumns = Math.max(1, this.config.gridColumns);
+    const previousRows = Math.max(1, this.config.gridRows);
+    if (nextSize === previousColumns && nextSize === previousRows) return;
+
+    const used = new Set();
+    const center = Math.floor(nextSize / 2);
+
+    this.deposits.forEach((deposit, index) => {
+      const normalizedX = previousColumns > 1 ? deposit.x / (previousColumns - 1) : 0.5;
+      const normalizedY = previousRows > 1 ? deposit.y / (previousRows - 1) : 0.5;
+      let x = clampInt(normalizedX * (nextSize - 1), 0, nextSize - 1);
+      let y = clampInt(normalizedY * (nextSize - 1), 0, nextSize - 1);
+
+      if (used.has(`${x}:${y}`)) {
+        const maxRadius = nextSize;
+        let placed = false;
+        for (let radius = 1; radius < maxRadius && !placed; radius += 1) {
+          for (let dy = -radius; dy <= radius && !placed; dy += 1) {
+            for (let dx = -radius; dx <= radius; dx += 1) {
+              if (Math.max(Math.abs(dx), Math.abs(dy)) !== radius) continue;
+              const candidateX = clampInt(x + dx, 0, nextSize - 1);
+              const candidateY = clampInt(y + dy, 0, nextSize - 1);
+              if (!used.has(`${candidateX}:${candidateY}`)) {
+                x = candidateX;
+                y = candidateY;
+                placed = true;
+                break;
+              }
+            }
+          }
+        }
+
+        if (!placed) {
+          x = clampInt(center + index, 0, nextSize - 1);
+          y = center;
+        }
+      }
+
+      deposit.x = x;
+      deposit.y = y;
+      used.add(`${x}:${y}`);
+    });
+
+    this.config.gridColumns = nextSize;
+    this.config.gridRows = nextSize;
+    this.stopMining();
     this.touch();
   }
 
