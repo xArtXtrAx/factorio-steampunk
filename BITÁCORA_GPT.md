@@ -7,19 +7,19 @@
 | Campo | Valor |
 |---|---|
 | Proyecto | `factorio-steampunk` |
-| Objetivo actual | `Prototipo jugable v0.1 — pulso visual de extracción` |
+| Objetivo actual | `Prototipo jugable v0.1 — navegación escalable del DEV Panel` |
 | Rama estable | `main` |
 | Rama activa | `agent/prototipo-v0-1` |
-| Último checkpoint verificable | `pulso concéntrico y controles gráficos publicados en rama activa` |
-| Estado del build | `último build previo ejecutado localmente sin errores reportados; build posterior al FX pendiente` |
-| Estado de pruebas | `arranque base validado por usuario; nuevo FX revisado estructuralmente y pendiente de build/validación visual` |
+| Último checkpoint verificable | `DEV Panel con pestañas General/Gráficos y subapartado Efectos de extracción publicado en rama activa` |
+| Estado del build | `último build previo ejecutado localmente sin errores reportados; build posterior a pestañas/FX pendiente` |
+| Estado de pruebas | `arranque base validado por usuario; FX y navegación por pestañas revisados estructuralmente y pendientes de build/validación visual` |
 | Cambios locales sin publicar | `ninguno conocido` |
 | Bugs abiertos relevantes | `ninguno registrado` |
 | Última actualización | `2026-08-07` |
 
 ## Próximo paso exacto
 
-Actualizar la rama local, ejecutar `npm run build`, abrir el prototipo y validar el pulso de extracción con el preset por defecto y con 2–3 anillos desde el apartado Gráficos del DEV Panel.
+Actualizar la rama local, ejecutar `npm run build`, abrir el prototipo y validar la navegación del DEV Panel: General debe conservar Simulación, Inventario y Depósitos; Gráficos debe contener Entorno gráfico y el subapartado Efectos de extracción.
 
 ### Criterio para considerar completado el próximo paso
 
@@ -29,9 +29,11 @@ Actualizar la rama local, ejecutar `npm run build`, abrir el prototipo y validar
 - [x] Contadores superiores y parámetros editables en DEV Panel implementados.
 - [x] Pulso concéntrico sincronizado con la extracción implementado.
 - [x] Cantidad de anillos configurable de 1 a 6 implementada.
-- [x] Parámetros visuales del pulso expuestos en sección Gráficos.
-- [ ] Build local posterior al nuevo FX ejecutado y registrado.
-- [ ] Validación visual del pulso y sus controles completada y registrada.
+- [x] Pestañas `General` y `Gráficos` implementadas.
+- [x] `Gráficos` contiene `Entorno gráfico` y el subapartado `Efectos de extracción`.
+- [x] La pestaña activa se conserva durante los rerenders del panel.
+- [ ] Build local posterior a pestañas/FX ejecutado y registrado.
+- [ ] Validación visual de navegación y FX completada y registrada.
 
 ## Resumen funcional vigente
 
@@ -48,9 +50,11 @@ Actualizar la rama local, ejecutar `npm run build`, abrir el prototipo y validar
 - Un anillo por defecto; configurable entre 1 y 6 anillos escalonados dentro del mismo ciclo de extracción.
 - El último impacto visual del ciclo está asociado al evento real de extracción registrado por el estado.
 - Halo neón construido con trazos superpuestos para evitar filtros costosos en esta fase.
-- Apartado `Gráficos · Pulso de extracción` con controles vivos para:
+- Navegación del DEV Panel mediante dos pestañas iniciales:
+  - `General`: Simulación, Inventario y Depósitos activos, sin más niveles de anidación por ahora.
+  - `Gráficos`: parámetros visuales separados de la simulación.
+- Dentro de `Gráficos` existe `Entorno gráfico`, con brillo de retícula, y el subapartado `Efectos de extracción` con controles vivos para:
   - activar/desactivar;
-  - brillo de retícula;
   - cantidad y separación de anillos;
   - desfase de tamaño;
   - diámetro inicial/final;
@@ -61,6 +65,7 @@ Actualizar la rama local, ejecutar `npm run build`, abrir el prototipo y validar
   - curva de contracción;
   - flash y fade de impacto;
   - multiplicador temporal.
+- La selección de pestaña se conserva cuando un cambio de estado obliga a volver a renderizar el DEV Panel.
 
 ### Preset gráfico inicial
 
@@ -89,7 +94,9 @@ Actualizar la rama local, ejecutar `npm run build`, abrir el prototipo y validar
 
 ### Lo que todavía falta validar
 
-- Build después de incorporar el pulso gráfico.
+- Build después de incorporar el pulso gráfico y la navegación por pestañas.
+- Cambio entre `General` y `Gráficos` sin pérdida de controles ni estado.
+- Persistencia de la pestaña activa durante cambios de valores.
 - Contracción y sincronización visual a 1 recurso/s.
 - Respuesta del pulso al cambiar `Extracción / s`.
 - Comportamiento con 2–6 anillos y separaciones altas.
@@ -108,7 +115,7 @@ Actualizar la rama local, ejecutar `npm run build`, abrir el prototipo y validar
   - `src/game/config.js`: configuración, recursos y preset de FX.
   - `src/game/state.js`: estado, simulación de minería y eventos de extracción.
   - `src/game/renderer.js`: retícula, recursos, interacción y capa gráfica de FX.
-  - `src/ui/devPanel.js`: controles de simulación y gráficos.
+  - `src/ui/devPanel.js`: navegación por pestañas y controles de simulación/gráficos.
   - `src/main.js`: composición de aplicación y HUD.
 
 ## Decisiones activas
@@ -117,12 +124,13 @@ Actualizar la rama local, ejecutar `npm run build`, abrir el prototipo y validar
 |---|---|---|---|
 | `ADR-001` | PixiJS + Vite y separación simulación/render/UI | Rendimiento 2D, efectos y expansión modular | `docs/decisiones/ADR-001-arquitectura-web.md` |
 | `FX-001` | Pulso como capa independiente y parametrizable | Permite tuning visual sin acoplar balance y renderer de recursos | esta bitácora |
+| `UI-001` | Crecimiento del DEV Panel mediante pestañas | Evita una columna monolítica a medida que aumenten parámetros | esta bitácora |
 
 ## Riesgos, deuda y bloqueos
 
 | Estado | Riesgo o bloqueo | Impacto | Acción siguiente |
 |---|---|---|---|
-| Abierto | Nuevo FX no compilado todavía por GPT ni por usuario tras el último cambio | medio | ejecutar `npm run build` localmente |
+| Abierto | Navegación por pestañas y nuevo FX no compilados todavía tras los últimos cambios | medio | ejecutar `npm run build` localmente |
 | Abierto | Parámetros extremos de 6 anillos no validados en rendimiento | bajo | probar presets extremos en navegador |
 
 ## Cómo ejecutar el proyecto
@@ -138,19 +146,44 @@ npm run dev
 npm run build
 ```
 
-Después validar manualmente: mantener click sobre un depósito, confirmar un pulso por unidad con el preset por defecto, cambiar `Extracción / s`, probar 2–3 anillos y recorrer los parámetros del apartado Gráficos.
+Después validar manualmente: alternar General/Gráficos, cambiar parámetros de ambas vistas, confirmar que la pestaña activa no salta al actualizar el estado y probar el pulso con 1–3 anillos.
 
 ## Historial cronológico
 
-### 2026-08-07 — Pulso gráfico de extracción parametrizable
+### 2026-08-07 — Primera navegación por pestañas del DEV Panel
 
 **Rama:** `agent/prototipo-v0-1`
 
 **Objetivo**
 
-- Añadir feedback visual sincronizado con cada unidad extraída y convertirlo en un sistema completamente ajustable desde el DEV Panel.
+- Preparar el DEV Panel para crecer sin convertirlo en una lista vertical monolítica.
 
 **Cambios realizados**
+
+- Añadidas pestañas `General` y `Gráficos`.
+- Conservados Simulación, Inventario y Depósitos activos en `General`, sin anidarlos adicionalmente.
+- Movido el entorno visual a `Gráficos`.
+- Creado el subapartado `Efectos de extracción` dentro de `Gráficos`.
+- Añadidos estilos steampunk/neón para tabs, estado activo y subapartados.
+- Conservada la pestaña activa durante rerenders provocados por cambios de estado.
+
+**Pruebas ejecutadas**
+
+- Revisión estructural remota: realizada.
+- Build posterior al cambio: pendiente.
+- Validación manual de navegación: pendiente.
+
+**Estado al cerrar**
+
+- Navegación publicada en rama activa; no declarada validada hasta build y prueba local.
+
+**Siguiente paso**
+
+- Actualizar rama local, compilar y probar navegación junto con el FX de extracción.
+
+### 2026-08-07 — Pulso gráfico de extracción parametrizable
+
+**Rama:** `agent/prototipo-v0-1`
 
 - Añadida capa FX independiente.
 - Añadido pulso concéntrico que converge al recurso activo.
@@ -158,20 +191,7 @@ Después validar manualmente: mantener click sobre un depósito, confirmar un pu
 - Añadido soporte para 1–6 anillos escalonados dentro de un mismo ciclo.
 - Añadidos doble trazo de glow, colores configurables, easing y flash de impacto.
 - Añadida sección gráfica completa al DEV Panel.
-
-**Pruebas ejecutadas**
-
-- Revisión estructural remota del código: realizada.
-- Build posterior al cambio: pendiente.
-- Validación manual del efecto: pendiente.
-
-**Estado al cerrar**
-
-- Implementación publicada en la rama activa; no declarada validada hasta ejecutar build y prueba visual local.
-
-**Siguiente paso**
-
-- Actualizar rama local, ejecutar build y validar visualmente el preset y los controles de experimentación.
+- Build posterior al cambio y validación manual del efecto: pendientes.
 
 ### 2026-08-07 — Validación local inicial por el usuario
 
