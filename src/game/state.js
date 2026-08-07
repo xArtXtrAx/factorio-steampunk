@@ -11,6 +11,8 @@ export class GameState {
     this.deposits = [];
     this.miningTargetId = null;
     this.miningAccumulator = 0;
+    this.extractionSerial = 0;
+    this.lastExtraction = null;
     this.version = 0;
     this.regenerateDeposits();
   }
@@ -47,8 +49,9 @@ export class GameState {
   }
 
   setConfig(key, value) {
-    if (!(key in this.config) || Number.isNaN(value)) return;
-    this.config[key] = value;
+    if (!(key in this.config)) return;
+    if (typeof this.config[key] === 'number' && Number.isNaN(Number(value))) return;
+    this.config[key] = typeof this.config[key] === 'number' ? Number(value) : value;
     this.touch();
   }
 
@@ -98,6 +101,13 @@ export class GameState {
     deposit.amount -= extracted;
     this.inventory[deposit.type] += extracted;
     this.miningAccumulator -= extracted;
+    this.extractionSerial += extracted;
+    this.lastExtraction = {
+      depositId: deposit.id,
+      type: deposit.type,
+      units: extracted,
+      serial: this.extractionSerial,
+    };
     this.touch();
 
     if (deposit.amount <= 0) this.stopMining();
