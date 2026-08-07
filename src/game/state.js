@@ -14,6 +14,7 @@ export class GameState {
     this.inventory = Object.fromEntries(Object.keys(RESOURCE_TYPES).map((key) => [key, 0]));
     this.deposits = [];
     this.extractors = [];
+    this.extractorStock = 0;
     this.placementMode = null;
     this.miningTargetId = null;
     this.miningAccumulator = 0;
@@ -27,7 +28,39 @@ export class GameState {
     this.version += 1;
   }
 
+  getExtractorCost() {
+    return {
+      iron: Math.max(0, Math.floor(Number(this.config.extractorCostIron) || 0)),
+      copper: Math.max(0, Math.floor(Number(this.config.extractorCostCopper) || 0)),
+      stone: Math.max(0, Math.floor(Number(this.config.extractorCostStone) || 0)),
+      coal: Math.max(0, Math.floor(Number(this.config.extractorCostCoal) || 0)),
+    };
+  }
+
+  canAffordExtractor() {
+    const cost = this.getExtractorCost();
+    return Object.entries(cost).every(([type, amount]) => (this.inventory[type] || 0) >= amount);
+  }
+
+  buyExtractor() {
+    if (!this.canAffordExtractor()) return false;
+    const cost = this.getExtractorCost();
+    Object.entries(cost).forEach(([type, amount]) => {
+      this.inventory[type] -= amount;
+    });
+    this.extractorStock += 1;
+    this.touch();
+    return true;
+  }
+
+  setExtractorStock(value) {
+    this.extractorStock = clampInt(value, 0, 9999);
+    if (this.extractorStock <= 0 && this.placementMode === 'burnerExtractor') this.placementMode = null;
+    this.touch();
+  }
+
   regenerateDeposits() {
+    if (this.extractors.length) this.extractorStock += this.extractors.length;
     const centerX = Math.floor(this.config.gridColumns / 2);
     const centerY = Math.floor(this.config.gridRows / 2);
     const used = new Set();
@@ -60,6 +93,7 @@ export class GameState {
     this.config = { ...DEFAULT_CONFIG };
     this.inventory = Object.fromEntries(Object.keys(RESOURCE_TYPES).map((key) => [key, 0]));
     this.extractors = [];
+    this.extractorStock = 0;
     this.placementMode = null;
     this.miningTargetId = null;
     this.miningAccumulator = 0;
@@ -146,9 +180,11 @@ export class GameState {
   }
 
   beginExtractorPlacement() {
+    if (this.extractorStock <= 0) return false;
     this.placementMode = 'burnerExtractor';
     this.stopMining();
     this.touch();
+    return true;
   }
 
   cancelPlacement() {
@@ -158,7 +194,7 @@ export class GameState {
   }
 
   placeExtractor(depositId) {
-    if (this.placementMode !== 'burnerExtractor') return false;
+    if (this.placementMode !== 'burnerExtractor' || this.extractorStock <= 0) return false;
     const deposit = this.deposits.find((item) => item.id === depositId && item.amount > 0);
     if (!deposit) return false;
     if (this.extractors.some((extractor) => extractor.depositId === depositId)) return false;
@@ -173,6 +209,7 @@ export class GameState {
       enabled: true,
       status: 'sin combustible',
     });
+    this.extractorStock -= 1;
     this.placementMode = null;
     this.touch();
     return true;
@@ -182,11 +219,13 @@ export class GameState {
     const index = this.extractors.findIndex((item) => item.id === id);
     if (index < 0) return;
     this.extractors.splice(index, 1);
+    this.extractorStock += 1;
     this.touch();
   }
 
   removeAllExtractors() {
     if (!this.extractors.length) return;
+    this.extractorStock += this.extractors.length;
     this.extractors = [];
     this.touch();
   }
