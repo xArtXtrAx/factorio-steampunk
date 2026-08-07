@@ -102,6 +102,16 @@ function tabButton(label, tabId, activeTab, onSelect) {
   return button;
 }
 
+function actionButton(label, onClick, title = '') {
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.className = 'brass-button';
+  button.textContent = label;
+  if (title) button.title = title;
+  button.addEventListener('click', onClick);
+  return button;
+}
+
 export function mountDevPanel(state, host) {
   let activeTab = 'general';
   let rangeDragActive = false;
@@ -112,25 +122,18 @@ export function mountDevPanel(state, host) {
     grid.className = 'dev-section';
     const totalCells = state.config.gridColumns * state.config.gridRows;
     grid.innerHTML = `<h2>Retícula</h2><p class="dev-subsection-note">Actual: <strong>${state.config.gridColumns} × ${state.config.gridRows}</strong> · ${totalCells.toLocaleString('es-MX')} cuadros. Los recursos conservan sus cantidades y se recolocan proporcionalmente al cambiar el tamaño.</p>`;
-    grid.append(
-      numberControl('Tamaño de retícula (N × N)', state.config.gridColumns, 8, 60, 1, (value) => state.setGridSize(value)),
-    );
+    grid.append(numberControl('Tamaño de retícula (N × N)', state.config.gridColumns, 8, 60, 1, (value) => state.setGridSize(value)));
     host.append(grid);
 
     const simulation = document.createElement('section');
     simulation.className = 'dev-section';
     simulation.innerHTML = '<h2>Simulación</h2>';
     simulation.append(
-      numberControl('Extracción / s', state.config.miningRate, 0.1, 20, 0.1, (value) => state.setConfig('miningRate', value)),
+      numberControl('Extracción manual / s', state.config.miningRate, 0.1, 20, 0.1, (value) => state.setConfig('miningRate', value)),
       numberControl('Reserva inicial', state.config.initialDepositAmount, 1, 10000, 1, (value) => state.setConfig('initialDepositAmount', value)),
       numberControl('Radio aparición', state.config.spawnRadius, 1, 14, 1, (value) => state.setConfig('spawnRadius', value)),
+      actionButton('REGENERAR DEPÓSITOS', () => state.regenerateDeposits()),
     );
-
-    const regenerate = document.createElement('button');
-    regenerate.className = 'brass-button';
-    regenerate.textContent = 'REGENERAR DEPÓSITOS';
-    regenerate.addEventListener('click', () => state.regenerateDeposits());
-    simulation.append(regenerate);
     host.append(simulation);
 
     const inventory = document.createElement('section');
@@ -151,17 +154,70 @@ export function mountDevPanel(state, host) {
     host.append(deposits);
   };
 
+  const renderMachines = () => {
+    const mechanics = document.createElement('section');
+    mechanics.className = 'dev-section';
+    mechanics.innerHTML = '<h2>Extractor de combustión Mk.I</h2><p class="dev-subsection-note">Primer sistema automático. El preset inicial produce 1 recurso/s y convierte 1 carbón en 10 unidades de trabajo.</p>';
+    mechanics.append(
+      numberControl('Producción / s', state.config.extractorMiningRate, 0.1, 20, 0.1, (value) => state.setConfig('extractorMiningRate', value)),
+      numberControl('Recursos por carbón', state.config.extractorResourcesPerCoal, 1, 100, 1, (value) => state.setConfig('extractorResourcesPerCoal', value)),
+      numberControl('Capacidad buffer carbón', state.config.extractorFuelBufferCapacity, 0, 50, 1, (value) => state.setConfig('extractorFuelBufferCapacity', value)),
+      toggleControl('Auto-cargar desde inventario', state.config.extractorAutoLoadFuel, (value) => state.setConfig('extractorAutoLoadFuel', value)),
+      toggleControl('Autoalimentación sobre carbón', state.config.extractorCoalSelfFeed, (value) => state.setConfig('extractorCoalSelfFeed', value)),
+    );
+
+    const placementNote = document.createElement('p');
+    placementNote.className = 'dev-subsection-note';
+    placementNote.textContent = state.placementMode === 'burnerExtractor'
+      ? 'Modo colocación activo: haz click sobre un depósito sin extractor.'
+      : 'Pulsa colocar y después selecciona un depósito en la retícula.';
+    mechanics.append(
+      placementNote,
+      actionButton(
+        state.placementMode === 'burnerExtractor' ? 'CANCELAR COLOCACIÓN' : 'COLOCAR EXTRACTOR Mk.I',
+        () => state.placementMode === 'burnerExtractor' ? state.cancelPlacement() : state.beginExtractorPlacement(),
+      ),
+      actionButton('RETIRAR TODOS LOS EXTRACTORES', () => state.removeAllExtractors()),
+    );
+    host.append(mechanics);
+
+    const active = document.createElement('section');
+    active.className = 'dev-section';
+    active.innerHTML = `<h2>Extractores activos</h2><p class="dev-subsection-note">${state.extractors.length} instalado(s). El carbón del buffer se carga automáticamente desde el inventario cuando la opción está activa.</p>`;
+
+    if (!state.extractors.length) {
+      const empty = document.createElement('p');
+      empty.className = 'dev-subsection-note';
+      empty.textContent = 'Todavía no hay extractores instalados.';
+      active.append(empty);
+    }
+
+    state.extractors.forEach((extractor, index) => {
+      const deposit = state.deposits.find((item) => item.id === extractor.depositId);
+      const meta = deposit ? RESOURCE_TYPES[deposit.type] : { label: 'Sin depósito' };
+      const machine = document.createElement('div');
+      machine.className = 'dev-subsection';
+      machine.innerHTML = `<h3>Extractor ${index + 1} · ${meta.label}</h3><p class="dev-subsection-note">Estado: <strong>${extractor.status}</strong> · producido: ${Math.floor(extractor.producedTotal)} · trabajo del combustible: ${extractor.fuelWorkRemaining.toFixed(1)}</p>`;
+      machine.append(
+        toggleControl('Activo', extractor.enabled, (value) => state.setExtractorEnabled(extractor.id, value)),
+        numberControl('Carbón en buffer', extractor.fuelBuffer, 0, Math.max(0, state.config.extractorFuelBufferCapacity), 1, (value) => state.setExtractorFuel(extractor.id, value)),
+        actionButton('RETIRAR EXTRACTOR', () => state.removeExtractor(extractor.id)),
+      );
+      active.append(machine);
+    });
+    host.append(active);
+  };
+
   const renderGraphics = () => {
     const graphicsEnvironment = document.createElement('section');
     graphicsEnvironment.className = 'dev-section';
     graphicsEnvironment.innerHTML = '<h2>Entorno gráfico</h2>';
 
-    const resetGraphics = document.createElement('button');
-    resetGraphics.type = 'button';
-    resetGraphics.className = 'brass-button';
-    resetGraphics.textContent = 'RESTAURAR VALORES GRÁFICOS';
-    resetGraphics.title = 'Restaura únicamente la configuración visual al preset inicial sin modificar simulación, inventario ni depósitos.';
-    resetGraphics.addEventListener('click', () => state.resetGraphicsToDefaults());
+    const resetGraphics = actionButton(
+      'RESTAURAR VALORES GRÁFICOS',
+      () => state.resetGraphicsToDefaults(),
+      'Restaura únicamente la configuración visual al preset inicial sin modificar simulación, inventario, depósitos ni máquinas.',
+    );
 
     graphicsEnvironment.append(
       resetGraphics,
@@ -170,7 +226,7 @@ export function mountDevPanel(state, host) {
 
     const extractionFx = document.createElement('div');
     extractionFx.className = 'dev-subsection';
-    extractionFx.innerHTML = '<h3>Efectos de extracción</h3><p class="dev-subsection-note">Feedback visual sincronizado con cada unidad extraída.</p>';
+    extractionFx.innerHTML = '<h3>Efectos de extracción</h3><p class="dev-subsection-note">Feedback visual sincronizado con cada unidad extraída, manual o automáticamente.</p>';
     extractionFx.append(
       toggleControl('Activar pulso', state.config.pulseEnabled, (value) => state.setConfig('pulseEnabled', value)),
       numberControl('Cantidad de anillos', state.config.pulseRingCount, 1, 6, 1, (value) => state.setConfig('pulseRingCount', value)),
@@ -196,7 +252,20 @@ export function mountDevPanel(state, host) {
       numberControl('Multiplicador temporal', state.config.pulseTimeScale, 0.1, 3, 0.05, (value) => state.setConfig('pulseTimeScale', value)),
     );
 
-    graphicsEnvironment.append(extractionFx);
+    const extractorFx = document.createElement('div');
+    extractorFx.className = 'dev-subsection';
+    extractorFx.innerHTML = '<h3>Extractores</h3><p class="dev-subsection-note">Apariencia de las máquinas de combustión instaladas sobre depósitos.</p>';
+    extractorFx.append(
+      numberControl('Escala visual × celda', state.config.extractorVisualScale, 0.3, 1.2, 0.01, (value) => state.setConfig('extractorVisualScale', value)),
+      numberControl('Velocidad engranaje', state.config.extractorGearSpeed, 0, 5, 0.05, (value) => state.setConfig('extractorGearSpeed', value)),
+      numberControl('Intensidad glow extractor', state.config.extractorGlowIntensity, 0, 1, 0.01, (value) => state.setConfig('extractorGlowIntensity', value)),
+      numberControl('Grosor aro combustible', state.config.extractorFuelRingWidth, 0.5, 10, 0.5, (value) => state.setConfig('extractorFuelRingWidth', value)),
+      colorControl('Color cuerpo extractor', state.config.extractorBodyColor, (value) => state.setConfig('extractorBodyColor', value)),
+      colorControl('Color latón extractor', state.config.extractorBrassColor, (value) => state.setConfig('extractorBrassColor', value)),
+      colorControl('Color glow extractor', state.config.extractorGlowColor, (value) => state.setConfig('extractorGlowColor', value)),
+    );
+
+    graphicsEnvironment.append(extractionFx, extractorFx);
     host.append(graphicsEnvironment);
   };
 
@@ -205,33 +274,27 @@ export function mountDevPanel(state, host) {
 
     const title = document.createElement('div');
     title.className = 'panel-title';
-    title.innerHTML = '<small>FORGE CONTROL</small><h1>DEV PANEL</h1><p>Parámetros vivos de simulación y presentación</p>';
+    title.innerHTML = '<small>FORGE CONTROL</small><h1>DEV PANEL</h1><p>Control total de simulación y presentación durante desarrollo</p>';
     host.append(title);
 
     const tabs = document.createElement('nav');
     tabs.className = 'dev-tabs';
     tabs.setAttribute('aria-label', 'Secciones del panel de desarrollo');
     tabs.append(
-      tabButton('General', 'general', activeTab, (nextTab) => {
-        activeTab = nextTab;
-        render();
-      }),
-      tabButton('Gráficos', 'graphics', activeTab, (nextTab) => {
-        activeTab = nextTab;
-        render();
-      }),
+      tabButton('General', 'general', activeTab, (nextTab) => { activeTab = nextTab; render(); }),
+      tabButton('Máquinas', 'machines', activeTab, (nextTab) => { activeTab = nextTab; render(); }),
+      tabButton('Gráficos', 'graphics', activeTab, (nextTab) => { activeTab = nextTab; render(); }),
     );
     host.append(tabs);
 
-    const reset = document.createElement('button');
-    reset.type = 'button';
-    reset.className = 'brass-button';
-    reset.textContent = 'RESTAURAR VALORES INICIALES';
-    reset.title = 'Restaura todo el juego al estado inicial: configuración, inventario, depósitos y sistemas futuros incluidos en el preset global.';
-    reset.addEventListener('click', () => state.resetToDefaults());
-    host.append(reset);
+    host.append(actionButton(
+      'RESTAURAR VALORES INICIALES',
+      () => state.resetToDefaults(),
+      'Restaura todo el juego al estado inicial: configuración, inventario, depósitos, máquinas y sistemas futuros incluidos en el preset global.',
+    ));
 
     if (activeTab === 'graphics') renderGraphics();
+    else if (activeTab === 'machines') renderMachines();
     else renderGeneral();
   };
 
