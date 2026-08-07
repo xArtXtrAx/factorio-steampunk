@@ -2,93 +2,141 @@
 
 > Documento operativo de continuidad. El punto de entrada permanente vive en `CONTINUIDAD_GPT.md` dentro de `main`.
 
+## Principio de desarrollo: control total desde DEV
+
+Durante el desarrollo buscamos **control total y explícito sobre las mecánicas y la presentación** para evaluar parámetros junto con el propietario del proyecto antes de consolidarlos como balance definitivo.
+
+Regla operativa:
+
+- toda mecánica nueva debe exponer en el DEV Panel sus parámetros de balance relevantes;
+- toda presentación/FX nueva debe exponer sus parámetros visuales relevantes en `Gráficos`;
+- los estados de entidades nuevas deben poder inspeccionarse y, cuando sea razonable, manipularse desde DEV;
+- los presets iniciales son hipótesis de diseño, no valores finales;
+- los resets parciales/globales deben evolucionar junto con los nuevos sistemas;
+- sólo se ocultan o fijan parámetros cuando exista una decisión explícita de diseño para hacerlo.
+
+El DEV Panel es por tanto una herramienta de experimentación y diagnóstico, no la interfaz final del jugador.
+
 ## Estado actual
 
 | Campo | Valor |
 |---|---|
 | Proyecto | `factorio-steampunk` |
-| Objetivo actual | `Prototipo jugable v0.1 integrado en main` |
+| Objetivo actual | `v0.2 — Extractor de combustión Mk.I` |
 | Rama estable | `main` |
-| Rama activa | `main` |
-| Último checkpoint verificable | `PR #1 fusionado en main; merge fe55692aa95adea043c19d8f1f8b121003c5c1d9` |
-| Estado del build | `build local previo ejecutado sin errores reportados; build posterior a los últimos cambios todavía pendiente` |
-| Estado de pruebas | `arranque base y apariencia general validados por el usuario; FX, sliders continuos, resets y retícula dinámica pendientes de recorrido final sistemático` |
+| Rama activa | `agent/extractor-v0-2` |
+| Último checkpoint verificable | `simulación, colocación, render y controles DEV del extractor publicados en rama activa` |
+| Estado del build | `build de esta rama pendiente` |
+| Estado de pruebas | `revisión estructural remota en curso; validación local/manual pendiente` |
 | Cambios locales sin publicar | `ninguno conocido` |
 | Bugs abiertos relevantes | `ninguno registrado` |
 | Última actualización | `2026-08-07` |
 
 ## Próximo paso exacto
 
-Actualizar el checkout local a `main`, ejecutar `npm run build` y realizar una pasada de validación manual de la v0.1 integrada: minería, pulso FX, pestañas del DEV Panel, sliders continuos, reset global, reset gráfico y retícula 8×8–60×60.
+Actualizar el checkout local a `agent/extractor-v0-2`, ejecutar `npm run build` y validar en navegador el loop completo: colocar extractor sobre cada recurso, alimentar carbón, comprobar producción automática, autoalimentación en carbón, estados sin combustible/agotado y controles de las pestañas `Máquinas` y `Gráficos`.
 
-### Criterio de validación pendiente
+### Criterio de la fase v0.2
 
-- [x] Prototipo v0.1 implementado.
-- [x] PR #1 fusionado a `main`.
-- [x] Layout 2/3 juego y 1/3 DEV Panel.
-- [x] Retícula inicial 30×30 y tamaño dinámico 8×8–60×60.
-- [x] Recursos se adaptan al relayout y conservan cantidades.
-- [x] Minería manual configurable.
-- [x] Pulso concéntrico parametrizable con 1–6 anillos.
-- [x] DEV Panel con pestañas `General` y `Gráficos`.
-- [x] Sliders con actualización continua durante drag.
-- [x] Reset global y reset gráfico independiente.
-- [ ] `npm run build` ejecutado sobre `main` después de la integración.
-- [ ] Validación manual final de todos los controles y extremos completada.
+- [x] Rama `agent/extractor-v0-2` creada desde `main`.
+- [x] Extractor 1×1 ligado a un depósito.
+- [x] Producción inicial de 1 recurso/s.
+- [x] Eficiencia inicial de 10 recursos por carbón.
+- [x] Buffer de carbón configurable, valor inicial 5.
+- [x] Carga automática desde inventario configurable.
+- [x] Autoalimentación sobre depósito de carbón configurable.
+- [x] Modo de colocación desde DEV Panel.
+- [x] Pestaña `Máquinas` con parámetros de balance y estados por extractor.
+- [x] `Gráficos > Extractores` con escala, engranaje, glow, aro y colores.
+- [x] Silueta steampunk 1×1 sobre el recurso, engranaje animado y aro de combustible.
+- [x] Pulso de extracción reutilizado para extracción automática.
+- [x] Reset global elimina máquinas y devuelve parámetros al preset inicial.
+- [ ] Build local de v0.2 ejecutado y registrado.
+- [ ] Validación manual del balance/UX visual completada.
 
-## Resumen funcional vigente
+## Diseño funcional vigente del Extractor Mk.I
 
-- PixiJS 8.19.0 + Vite 8.1.5.
-- Retícula cuadrada inicial 30×30, configurable entre 8×8 y 60×60 desde `General > Retícula`.
-- El DEV Panel muestra dimensiones actuales y total de cuadros.
-- Los depósitos de carbón, cobre, hierro y piedra se recolocan proporcionalmente al cambiar el tamaño y permanecen dentro del mapa.
-- Minería continua manteniendo click izquierdo, con velocidad configurable.
-- HUD de inventario en vivo.
-- Pulso circular de extracción con glow neón y parámetros configurables en `Gráficos > Efectos de extracción`.
-- Pestañas `General` y `Gráficos`; la pestaña activa se conserva durante actualizaciones.
-- Sliders actualizan el juego continuamente mientras se arrastran.
-- `RESTAURAR VALORES INICIALES` es el reset maestro permanente del juego y debe evolucionar con todos los sistemas futuros.
-- `RESTAURAR VALORES GRÁFICOS` restaura sólo presentación/FX y preserva el estado jugable.
+Preset inicial:
+
+- producción: `1 recurso/s`;
+- eficiencia: `10 recursos / carbón`;
+- consumo equivalente: `0.10 carbón/s` a producción continua;
+- buffer de combustible: `5 carbón`;
+- tamaño: `1×1`;
+- requiere depósito: sí;
+- un depósito admite un extractor;
+- auto-carga de carbón: desde inventario global hasta llenar el buffer;
+- autoalimentación en carbón: si no hay combustible disponible, un extractor sobre carbón puede consumir directamente una unidad del propio depósito para iniciar un ciclo de combustible.
+
+Los extractores tienen estado inspeccionable: activo/detenido, trabajando, sin combustible, autoalimentando o depósito agotado; además registran combustible, trabajo restante y producción acumulada.
+
+## Diseño visual vigente
+
+- El recurso permanece visible debajo de la máquina.
+- Cuerpo cuadrado oscuro con borde de latón, ocupando ~84% de la celda.
+- Engranaje/rotor central gira sólo mientras la máquina trabaja.
+- Glow cian durante funcionamiento.
+- Aro exterior representa el trabajo restante del carbón actualmente encendido.
+- Indicador ámbar cuando la máquina no está trabajando por combustible/estado; gris al agotarse el depósito.
+- El pulso concéntrico existente converge también sobre extractores automáticos para conservar el lenguaje visual de extracción.
+
+## DEV Panel vigente
+
+### General
+
+- Retícula, simulación manual, inventario y depósitos.
+
+### Máquinas
+
+- Producción del extractor.
+- Recursos por carbón.
+- Capacidad del buffer.
+- Auto-carga desde inventario.
+- Autoalimentación sobre carbón.
+- Colocar/cancelar colocación.
+- Retirar todos los extractores.
+- Por extractor: estado, producción acumulada, trabajo de combustible, activo/inactivo, carbón del buffer y retirada individual.
+
+### Gráficos
+
+- Entorno y efectos de extracción existentes.
+- Subapartado `Extractores`: escala visual, velocidad de engranaje, intensidad de glow, grosor del aro de combustible y colores de cuerpo/latón/glow.
 
 ## Contratos de estado
 
-- `DEFAULT_CONFIG` es la fuente de verdad del estado/configuración inicial global.
-- `DEFAULT_GRAPHICS_CONFIG` contiene el preset visual inicial y forma parte de `DEFAULT_CONFIG`.
-- `resetToDefaults()` debe devolver siempre todos los sistemas del juego a su estado inicial.
-- `resetGraphicsToDefaults()` sólo debe modificar parámetros visuales.
+- `DEFAULT_CONFIG` sigue siendo la fuente de verdad del estado/configuración inicial global e incluye ahora los parámetros mecánicos del extractor.
+- `DEFAULT_GRAPHICS_CONFIG` incluye también el preset visual del extractor.
+- `resetToDefaults()` debe devolver todos los sistemas, incluidos extractores, al estado inicial.
+- `resetGraphicsToDefaults()` sólo modifica parámetros visuales y preserva inventario, depósitos, extractores y simulación.
+- Regenerar depósitos elimina extractores porque los IDs de depósito se reemplazan.
 
 ## Arquitectura vigente
 
-- Plataforma: navegador web de escritorio.
-- Lenguaje: JavaScript moderno con módulos ES.
-- Renderer: PixiJS 8.19.0.
-- Tooling: Vite 8.1.5.
-- Persistencia: todavía no existe.
-- Módulos principales:
-  - `src/game/config.js`: recursos y presets de configuración.
-  - `src/game/state.js`: simulación, minería, retícula dinámica y resets.
-  - `src/game/renderer.js`: retícula, recursos, interacción y FX.
-  - `src/ui/devPanel.js`: pestañas y controles vivos.
-  - `src/main.js`: composición de aplicación y HUD.
+- PixiJS 8.19.0 + Vite 8.1.5.
+- `src/game/config.js`: recursos, balance y presets gráficos.
+- `src/game/state.js`: minería manual, retícula, extractores, combustible y resets.
+- `src/game/renderer.js`: retícula, depósitos, máquinas y FX.
+- `src/ui/devPanel.js`: tabs `General`, `Máquinas`, `Gráficos` y controles vivos.
+- `src/main.js`: composición y HUD.
 
 ## Decisiones activas
 
-| ID | Decisión | Motivo | Referencia |
-|---|---|---|---|
-| `ADR-001` | PixiJS + Vite y separación simulación/render/UI | Rendimiento 2D y expansión modular | `docs/decisiones/ADR-001-arquitectura-web.md` |
-| `FX-001` | Pulso como capa independiente y parametrizable | Tuning visual desacoplado del balance | esta bitácora |
-| `UI-001` | DEV Panel escalable mediante pestañas | Evitar una columna monolítica | esta bitácora |
-| `UI-002` | Suspender rerender del panel durante drag | Mantener captura continua del slider | esta bitácora |
-| `STATE-001` | Reset global y presets parciales componibles | Restauración coherente conforme crezca el juego | esta bitácora |
-| `GRID-001` | Retícula cuadrada variable con adaptación de depósitos | Experimentar con escala sin perder estado | esta bitácora |
+| ID | Decisión | Motivo |
+|---|---|---|
+| `ADR-001` | PixiJS + Vite y separación simulación/render/UI | Rendimiento 2D y expansión modular |
+| `DEV-001` | Toda mecánica nueva expone parámetros relevantes en DEV | Permitir evaluación conjunta y tuning antes de fijar balance |
+| `MACHINE-001` | Extractor Mk.I 1×1 ligado a depósito | Mantener legibilidad espacial en la primera automatización |
+| `FUEL-001` | Trabajo de combustible expresado en recursos por carbón | Relación fácil de entender y tunear (`1 → 10` inicial) |
+| `STATE-001` | Reset global evoluciona con todos los sistemas | Garantizar retorno reproducible al estado inicial |
 
 ## Riesgos y validación pendiente
 
 | Estado | Riesgo | Acción siguiente |
 |---|---|---|
-| Abierto | Últimos cambios no compilados todavía sobre `main` | ejecutar `npm run build` |
-| Abierto | Retícula 60×60 no recorrida sistemáticamente en resolución objetivo | validar extremos 8×8 y 60×60 |
-| Abierto | 6 anillos y parámetros FX extremos no validados en rendimiento | probar configuración máxima |
+| Abierto | Código de extractor aún no compilado en entorno local | ejecutar `npm run build` |
+| Abierto | Flujo de auto-carga/autoalimentación no recorrido manualmente | probar carbón y recursos no combustibles |
+| Abierto | Representación del extractor no validada en retículas extremas | probar 8×8, 30×30 y 60×60 |
+| Abierto | Balance 1 carbón → 10 recursos es provisional | experimentar desde DEV Panel |
 
 ## Cómo ejecutar y verificar
 
@@ -98,39 +146,28 @@ npm run build
 npm run dev
 ```
 
-Después validar en navegador el flujo completo de la v0.1.
+Validación manual sugerida:
+
+1. En `Máquinas`, activar `COLOCAR EXTRACTOR Mk.I` y seleccionar hierro sin carbón en inventario: debe quedar `sin combustible`.
+2. Añadir carbón desde `General > Inventario`: el extractor debe cargar su buffer y empezar a producir.
+3. Colocar un extractor sobre carbón con inventario vacío: debe poder autoalimentarse desde su propio depósito si la opción está activa.
+4. Cambiar `Producción / s`, `Recursos por carbón` y buffer y observar el efecto.
+5. Ajustar `Gráficos > Extractores` y comprobar cambios en vivo.
+6. Usar reset gráfico y comprobar que no cambia el estado jugable.
+7. Usar reset global y confirmar que se eliminan extractores y vuelve todo al preset inicial.
 
 ## Historial cronológico
 
-### 2026-08-07 — Integración de prototipo v0.1 en main
+### 2026-08-07 — Inicio v0.2: Extractor de combustión Mk.I
 
-- PR #1 `Implementa prototipo jugable v0.1` marcado listo y fusionado correctamente.
-- Merge commit: `fe55692aa95adea043c19d8f1f8b121003c5c1d9`.
-- No había bugs registrados al integrar.
-- La rama y `main` habían divergido por actualizaciones documentales; GitHub resolvió la fusión correctamente sin reescritura destructiva.
-- Se mantiene explícitamente pendiente el build y la validación manual final de los cambios más recientes.
+- Definido el principio `DEV-001`: control total durante desarrollo.
+- Añadida primera máquina automática alimentada por carbón.
+- Añadidos colocación, combustible, producción, auto-carga y autoalimentación sobre carbón.
+- Añadida pestaña `Máquinas` y controles gráficos del extractor.
+- Añadida representación visual steampunk procedural sobre la celda del depósito.
+- Revisión estructural remota realizada; build y validación manual pendientes.
 
-### 2026-08-07 — Retícula dinámica configurable
+### 2026-08-07 — Integración v0.1
 
-- Añadido control 8×8–60×60, indicador de tamaño y total de cuadros.
-- Los recursos conservan cantidades y se recolocan dentro de la nueva retícula.
-
-### 2026-08-07 — Resets global y gráfico independientes
-
-- Formalizados `DEFAULT_CONFIG`, `DEFAULT_GRAPHICS_CONFIG`, reset maestro y reset visual.
-
-### 2026-08-07 — Arrastre continuo y navegación del DEV Panel
-
-- Añadidas pestañas `General`/`Gráficos` y sliders continuos durante drag.
-
-### 2026-08-07 — Pulso gráfico de extracción
-
-- Añadido pulso concéntrico sincronizado con extracción y soporte para 1–6 anillos.
-
-### 2026-08-07 — Validación local inicial
-
-- Build inicial sin errores reportados por el usuario y aplicación abierta correctamente en navegador.
-
-### 2026-08-07 — Inicialización del repositorio
-
-- Establecidos continuidad, reglas, registro de bugs, ADR y flujo de PR.
+- PR #1 fusionado en `main`, merge `fe55692aa95adea043c19d8f1f8b121003c5c1d9`.
+- v0.1 estableció minería manual, DEV Panel, FX, resets y retícula dinámica.
