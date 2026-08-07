@@ -8,12 +8,12 @@ Este archivo es el punto de entrada permanente para reanudar el proyecto sin dep
 |---|---|
 | Proyecto | `factorio-steampunk` |
 | Rama estable | `main` |
-| Rama activa | `main` |
-| Fase u objetivo actual | `Prototipo jugable v0.1 integrado — validación final y siguiente iteración` |
-| Estado | `PR #1 fusionado en main; v0.1 integrada con minería, DEV Panel, FX, sliders continuos, resets y retícula dinámica` |
-| Commit remoto de referencia | `86dab76a896059d17ce74509ce26b174a0de587f` |
-| Merge de v0.1 | `fe55692aa95adea043c19d8f1f8b121003c5c1d9` |
-| Validación | `build inicial y arranque base validados por el usuario; build y recorrido manual final posteriores a los últimos cambios todavía pendientes` |
+| Rama activa | `agent/extractor-v0-2` |
+| Fase u objetivo actual | `v0.2 — Extractor de combustión Mk.I` |
+| Estado | `primera automatización alimentada por carbón implementada remotamente con colocación, combustible, render y control DEV; build/validación local pendientes` |
+| Commit remoto de referencia | `4d0415e5cc8d04376b107c887f5b46b6640033b2` |
+| Base estable v0.1 | `merge fe55692aa95adea043c19d8f1f8b121003c5c1d9` |
+| Validación | `v0.1 ejecutada por el usuario; v0.2 revisada estructuralmente y pendiente de build/recorrido manual` |
 | Cambios locales sin publicar | `ninguno conocido` |
 | Última actualización | `2026-08-07` |
 
@@ -23,21 +23,22 @@ Este archivo es el punto de entrada permanente para reanudar el proyecto sin dep
 2. Identificar rama activa, commit remoto de referencia y estado de validación.
 3. Leer `AGENTS.md`, `BITÁCORA_GPT.md` y `BUGS.md` desde la rama activa; si no existe, desde `main`.
 4. Revisar ADR y documentación citada.
-5. Revisar PR/commits recientes cuando corresponda.
+5. Comparar `main` con la rama activa y revisar PR recientes.
 6. Continuar desde **Próximo paso exacto** en `BITÁCORA_GPT.md`.
 
 ## Reglas críticas
 
 - El repositorio es la fuente de verdad.
 - No confundir implementación, revisión estructural, build y validación manual.
-- `RESTAURAR VALORES INICIALES` es el reset maestro permanente y debe evolucionar con todos los sistemas futuros.
+- Durante desarrollo buscamos control total: toda mecánica nueva debe exponer sus parámetros relevantes en el DEV Panel y toda presentación nueva debe exponer tuning visual razonable en `Gráficos`.
+- El DEV Panel es una herramienta de experimentación/diagnóstico, no la UI final del jugador.
+- `RESTAURAR VALORES INICIALES` es el reset maestro permanente y debe evolucionar con todos los sistemas futuros, incluidos extractores.
 - El reset gráfico sólo modifica presentación/FX y preserva estado jugable.
-- La retícula parte de 30×30 y puede variarse entre 8×8 y 60×60; los recursos deben adaptarse y permanecer dentro del mapa.
-- Mantener este documento breve; el detalle técnico vive en `BITÁCORA_GPT.md`.
+- La retícula parte de 30×30 y puede variarse entre 8×8 y 60×60; depósitos y máquinas deben adaptarse al relayout.
 
 ## Próximo punto de reanudación
 
-En `main`, ejecutar `npm run build` y recorrer manualmente la v0.1 integrada: minería, pulso FX, pestañas del DEV Panel, sliders continuos, reset global, reset gráfico y extremos de retícula 8×8/60×60. Registrar cualquier incidencia en `BUGS.md` antes de iniciar la siguiente iteración.
+Actualizar el checkout local a `agent/extractor-v0-2`, ejecutar `npm run build` y validar el Extractor de combustión Mk.I: colocación sobre depósitos, consumo de carbón, producción 1 recurso/s, eficiencia 10 recursos/carbón, auto-carga, autoalimentación en carbón y controles de `Máquinas` / `Gráficos`.
 
 ## Prompt mínimo para un chat nuevo
 
