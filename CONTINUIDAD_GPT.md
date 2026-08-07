@@ -8,11 +8,11 @@ Este archivo es el punto de entrada permanente para reanudar el proyecto sin dep
 |---|---|
 | Proyecto | `factorio-steampunk` |
 | Rama estable | `main` |
-| Rama activa | `ninguna todavía` |
-| Fase u objetivo actual | `Inicialización del proyecto y prototipo jugable v0.1` |
-| Estado | `implementación pendiente` |
-| Commit remoto de referencia | `pendiente tras inicialización` |
-| Validación | `pendiente` |
+| Rama activa | `agent/prototipo-v0-1` |
+| Fase u objetivo actual | `Prototipo jugable v0.1` |
+| Estado | `implementado remotamente; validación pendiente` |
+| Commit remoto de referencia | `4903af671c81f901f95b592c10aee67c32c0481c` |
+| Validación | `revisión estructural realizada; build bloqueado por falta de resolución DNS en el entorno actual; validación manual pendiente` |
 | Cambios locales sin publicar | `ninguno conocido` |
 | Última actualización | `2026-08-07` |
 
@@ -34,7 +34,7 @@ Este archivo es el punto de entrada permanente para reanudar el proyecto sin dep
 
 ## Próximo punto de reanudación
 
-Inicializar la documentación base y abrir una rama de trabajo para el prototipo v0.1.
+Validar el prototipo v0.1: ejecutar instalación/build en un entorno con red y comprobar manualmente la interacción en navegador antes de integrar la rama.
 
 ## Prompt mínimo para un chat nuevo
 
