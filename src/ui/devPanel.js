@@ -34,13 +34,71 @@ function numberControl(label, value, min, max, step, onInput) {
   return row;
 }
 
+function toggleControl(label, value, onInput) {
+  const row = document.createElement('label');
+  row.className = 'control-row control-toggle';
+  const text = document.createElement('span');
+  text.textContent = label;
+  const input = document.createElement('input');
+  input.type = 'checkbox';
+  input.checked = Boolean(value);
+  input.addEventListener('change', () => onInput(input.checked));
+  row.append(text, input);
+  return row;
+}
+
+function colorControl(label, value, onInput) {
+  const row = document.createElement('label');
+  row.className = 'control-row';
+  row.innerHTML = `<span>${label}</span>`;
+  const fields = document.createElement('div');
+  fields.className = 'color-fields';
+  const color = document.createElement('input');
+  color.type = 'color';
+  color.value = value;
+  const text = document.createElement('input');
+  text.type = 'text';
+  text.value = value;
+
+  const sync = (raw) => {
+    const normalized = /^#[0-9a-f]{6}$/i.test(raw) ? raw.toLowerCase() : color.value;
+    color.value = normalized;
+    text.value = normalized;
+    onInput(normalized);
+  };
+
+  color.addEventListener('input', () => sync(color.value));
+  text.addEventListener('change', () => sync(text.value.trim()));
+  fields.append(color, text);
+  row.append(fields);
+  return row;
+}
+
+function selectControl(label, value, options, onInput) {
+  const row = document.createElement('label');
+  row.className = 'control-row';
+  const text = document.createElement('span');
+  text.textContent = label;
+  const select = document.createElement('select');
+  options.forEach(([optionValue, optionLabel]) => {
+    const option = document.createElement('option');
+    option.value = optionValue;
+    option.textContent = optionLabel;
+    option.selected = optionValue === value;
+    select.append(option);
+  });
+  select.addEventListener('change', () => onInput(select.value));
+  row.append(text, select);
+  return row;
+}
+
 export function mountDevPanel(state, host) {
   const render = () => {
     host.replaceChildren();
 
     const title = document.createElement('div');
     title.className = 'panel-title';
-    title.innerHTML = '<small>FORGE CONTROL</small><h1>DEV PANEL</h1><p>Parámetros vivos de simulación</p>';
+    title.innerHTML = '<small>FORGE CONTROL</small><h1>DEV PANEL</h1><p>Parámetros vivos de simulación y presentación</p>';
     host.append(title);
 
     const simulation = document.createElement('section');
@@ -50,8 +108,6 @@ export function mountDevPanel(state, host) {
       numberControl('Extracción / s', state.config.miningRate, 0.1, 20, 0.1, (value) => state.setConfig('miningRate', value)),
       numberControl('Reserva inicial', state.config.initialDepositAmount, 1, 10000, 1, (value) => state.setConfig('initialDepositAmount', value)),
       numberControl('Radio aparición', state.config.spawnRadius, 1, 14, 1, (value) => state.setConfig('spawnRadius', value)),
-      numberControl('Brillo retícula', state.config.gridGlow, 0.05, 1, 0.05, (value) => state.setConfig('gridGlow', value)),
-      numberControl('Pulso FX', state.config.pulseSpeed, 0, 5, 0.1, (value) => state.setConfig('pulseSpeed', value)),
     );
 
     const regenerate = document.createElement('button');
@@ -60,6 +116,36 @@ export function mountDevPanel(state, host) {
     regenerate.addEventListener('click', () => state.regenerateDeposits());
     simulation.append(regenerate);
     host.append(simulation);
+
+    const graphics = document.createElement('section');
+    graphics.className = 'dev-section';
+    graphics.innerHTML = '<h2>Gráficos · Pulso de extracción</h2>';
+    graphics.append(
+      toggleControl('Activar pulso', state.config.pulseEnabled, (value) => state.setConfig('pulseEnabled', value)),
+      numberControl('Brillo retícula', state.config.gridGlow, 0.05, 1, 0.05, (value) => state.setConfig('gridGlow', value)),
+      numberControl('Cantidad de anillos', state.config.pulseRingCount, 1, 6, 1, (value) => state.setConfig('pulseRingCount', value)),
+      numberControl('Separación temporal', state.config.pulseRingSpacing, 0, 0.3, 0.01, (value) => state.setConfig('pulseRingSpacing', value)),
+      numberControl('Desfase de tamaño', state.config.pulseRingSizeOffset, -0.15, 0.3, 0.01, (value) => state.setConfig('pulseRingSizeOffset', value)),
+      numberControl('Diámetro inicial × celda', state.config.pulseStartScale, 0.2, 3, 0.01, (value) => state.setConfig('pulseStartScale', value)),
+      numberControl('Diámetro final × celda', state.config.pulseEndScale, 0, 1, 0.01, (value) => state.setConfig('pulseEndScale', value)),
+      numberControl('Opacidad inicial', state.config.pulseStartAlpha, 0, 1, 0.01, (value) => state.setConfig('pulseStartAlpha', value)),
+      numberControl('Opacidad impacto', state.config.pulseImpactAlpha, 0, 1, 0.01, (value) => state.setConfig('pulseImpactAlpha', value)),
+      numberControl('Grosor del anillo', state.config.pulseLineWidth, 0.5, 12, 0.5, (value) => state.setConfig('pulseLineWidth', value)),
+      numberControl('Tamaño glow', state.config.pulseGlowSize, 0, 30, 1, (value) => state.setConfig('pulseGlowSize', value)),
+      numberControl('Intensidad glow', state.config.pulseGlowIntensity, 0, 1, 0.01, (value) => state.setConfig('pulseGlowIntensity', value)),
+      colorControl('Color del anillo', state.config.pulseColor, (value) => state.setConfig('pulseColor', value)),
+      colorControl('Color del glow', state.config.pulseGlowColor, (value) => state.setConfig('pulseGlowColor', value)),
+      selectControl('Curva de contracción', state.config.pulseEasing, [
+        ['linear', 'Lineal'],
+        ['easeIn', 'Ease In'],
+        ['easeOut', 'Ease Out'],
+        ['easeInOut', 'Ease In-Out'],
+      ], (value) => state.setConfig('pulseEasing', value)),
+      numberControl('Flash de impacto', state.config.pulseImpactFlash, 0, 1, 0.01, (value) => state.setConfig('pulseImpactFlash', value)),
+      numberControl('Fade de impacto (ms)', state.config.pulseFadeMs, 0, 1000, 10, (value) => state.setConfig('pulseFadeMs', value)),
+      numberControl('Multiplicador temporal', state.config.pulseTimeScale, 0.1, 3, 0.05, (value) => state.setConfig('pulseTimeScale', value)),
+    );
+    host.append(graphics);
 
     const inventory = document.createElement('section');
     inventory.className = 'dev-section';
