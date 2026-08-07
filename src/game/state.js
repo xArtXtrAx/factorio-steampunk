@@ -1,4 +1,4 @@
-import { DEFAULT_CONFIG, RESOURCE_TYPES } from './config.js';
+import { DEFAULT_CONFIG, DEFAULT_GRAPHICS_CONFIG, RESOURCE_TYPES } from './config.js';
 
 function randomInt(min, max) {
   return Math.floor(Math.random() * (max - min + 1)) + min;
@@ -56,6 +56,11 @@ export class GameState {
     this.extractionSerial = 0;
     this.lastExtraction = null;
     this.regenerateDeposits();
+  }
+
+  resetGraphicsToDefaults() {
+    Object.assign(this.config, DEFAULT_GRAPHICS_CONFIG);
+    this.touch();
   }
 
   setConfig(key, value) {
