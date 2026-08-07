@@ -108,6 +108,15 @@ export function mountDevPanel(state, host) {
   let renderPendingAfterDrag = false;
 
   const renderGeneral = () => {
+    const grid = document.createElement('section');
+    grid.className = 'dev-section';
+    const totalCells = state.config.gridColumns * state.config.gridRows;
+    grid.innerHTML = `<h2>Retícula</h2><p class="dev-subsection-note">Actual: <strong>${state.config.gridColumns} × ${state.config.gridRows}</strong> · ${totalCells.toLocaleString('es-MX')} cuadros. Los recursos conservan sus cantidades y se recolocan proporcionalmente al cambiar el tamaño.</p>`;
+    grid.append(
+      numberControl('Tamaño de retícula (N × N)', state.config.gridColumns, 8, 60, 1, (value) => state.setGridSize(value)),
+    );
+    host.append(grid);
+
     const simulation = document.createElement('section');
     simulation.className = 'dev-section';
     simulation.innerHTML = '<h2>Simulación</h2>';
