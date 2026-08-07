@@ -10,16 +10,16 @@
 | Objetivo actual | `Prototipo jugable v0.1` |
 | Rama estable | `main` |
 | Rama activa | `agent/prototipo-v0-1` |
-| Último checkpoint verificable | `implementación v0.1 publicada remotamente en rama activa` |
-| Estado del build | `no ejecutado: entorno local sin resolución DNS hacia github.com` |
-| Estado de pruebas | `revisión remota/estructural realizada; build y validación manual pendientes` |
+| Último checkpoint verificable | `prototipo v0.1 ejecutado localmente en navegador por el usuario` |
+| Estado del build | `ejecutado localmente sin errores reportados por el usuario` |
+| Estado de pruebas | `build local superado y aplicación abierta en navegador; validación funcional detallada aún pendiente` |
 | Cambios locales sin publicar | `ninguno conocido` |
 | Bugs abiertos relevantes | `ninguno registrado` |
 | Última actualización | `2026-08-07` |
 
 ## Próximo paso exacto
 
-Ejecutar `npm install` y `npm run build` en un entorno con acceso de red, abrir el prototipo en navegador y validar visualmente layout, retícula, minería y controles del DEV Panel antes de integrar.
+Validar manualmente el flujo funcional del prototipo: proporción 2/3–1/3, retícula 30×30, cuatro depósitos, minería mantenida, contadores y respuesta de todos los controles del DEV Panel. Registrar cualquier incidencia antes de integrar.
 
 ### Criterio para considerar completado el próximo paso
 
@@ -27,8 +27,9 @@ Ejecutar `npm install` y `npm run build` en un entorno con acceso de red, abrir 
 - [x] Retícula 30×30 con carbón, cobre, hierro y piedra cerca del centro implementada.
 - [x] Minería manual por click izquierdo a 1 recurso/segundo por defecto implementada.
 - [x] Contadores superiores y parámetros editables en DEV Panel implementados.
-- [ ] Build automatizado ejecutado con resultado registrado.
-- [ ] Validación manual en navegador completada y registrada.
+- [x] Build local ejecutado sin errores reportados por el usuario.
+- [x] Aplicación abierta correctamente en navegador.
+- [ ] Validación funcional detallada del loop y DEV Panel completada y registrada.
 
 ## Resumen funcional vigente
 
@@ -43,12 +44,19 @@ Ejecutar `npm install` y `npm run build` en un entorno con acceso de red, abrir 
 - Regeneración de depósitos desde DEV Panel.
 - Estética steampunk con acentos neón.
 
+### Lo ya validado localmente
+
+- Instalación/entorno suficientes para ejecutar el proyecto.
+- Build local sin errores reportados.
+- Servidor de desarrollo y apertura de la aplicación en navegador.
+
 ### Lo que todavía falta validar
 
-- Instalación de dependencias y build de producción.
-- Comportamiento real de PixiJS 8.19.0 en navegador objetivo.
-- Interacción sostenida de minería y controles del DEV Panel.
-- Ajuste visual exacto a 1920×1080 en hardware/navegador real.
+- Proporción visual exacta y retícula completa a 1920×1080.
+- Existencia y posición de los cuatro depósitos.
+- Interacción sostenida de minería y ritmo de 1 recurso/s.
+- Actualización de contadores.
+- Efecto real de sliders e inputs del DEV Panel.
 
 ## Arquitectura vigente
 
@@ -75,8 +83,7 @@ Ejecutar `npm install` y `npm run build` en un entorno con acceso de red, abrir 
 
 | Estado | Riesgo o bloqueo | Impacto | Acción siguiente |
 |---|---|---|---|
-| Abierto | El entorno de ejecución actual no resuelve `github.com`, por lo que no se pudo clonar ni instalar dependencias para build | medio | ejecutar validación en entorno con red |
-| Abierto | Validación visual/manual pendiente | medio | abrir en navegador a 1920×1080 y recorrer flujo principal |
+| Abierto | Validación funcional detallada todavía pendiente | medio | recorrer manualmente el loop y controles del DEV Panel |
 
 ## Cómo ejecutar el proyecto
 
@@ -95,6 +102,25 @@ Después validar manualmente en navegador: layout 2/3–1/3, retícula completa,
 
 ## Historial cronológico
 
+### 2026-08-07 — Validación local inicial por el usuario
+
+**Rama:** `agent/prototipo-v0-1`
+
+**Resultado informado**
+
+- Las comprobaciones de entorno se completaron correctamente.
+- El build local no reportó errores según el usuario.
+- El servidor de desarrollo arrancó y la ventana del juego se abrió correctamente en navegador.
+
+**Estado de validación**
+
+- Arranque local: validado manualmente.
+- Funciones individuales del juego: pendientes de recorrido sistemático.
+
+**Siguiente paso**
+
+- Verificar visualmente e interactuar con cada elemento de v0.1; registrar cualquier desviación en `BUGS.md`.
+
 ### 2026-08-07 — Prototipo web v0.1 implementado
 
 **Rama:** `agent/prototipo-v0-1`
@@ -109,23 +135,14 @@ Después validar manualmente en navegador: layout 2/3–1/3, retícula completa,
 - Implementados estado, minería, renderer, HUD y DEV Panel modular.
 - Añadida dirección visual steampunk/neón.
 
-**Pruebas ejecutadas**
+**Pruebas ejecutadas inicialmente por GPT**
 
-- Intento: clonar rama y ejecutar `npm install && npm run build`.
-- Resultado: bloqueado antes de clonar porque el entorno no pudo resolver `github.com`.
-- Validación manual: pendiente.
-
-**Problemas encontrados**
-
-- Bloqueo de infraestructura de red del entorno de ejecución; no se atribuye al código.
+- Intento de clonar rama y ejecutar `npm install && npm run build` bloqueado porque el entorno de ejecución de GPT no resolvía `github.com`.
+- Esa limitación quedó superada posteriormente mediante ejecución local del usuario.
 
 **Estado al cerrar**
 
-- Implementación publicada remotamente y lista para build/validación externa; no declarada validada.
-
-**Siguiente paso**
-
-- Ejecutar build y validación manual; corregir cualquier incidencia antes de integrar.
+- Implementación publicada remotamente y ya ejecutable localmente; pendiente validación funcional detallada.
 
 ### 2026-08-07 — Inicialización del repositorio
 
