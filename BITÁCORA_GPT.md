@@ -7,19 +7,19 @@
 | Campo | Valor |
 |---|---|
 | Proyecto | `factorio-steampunk` |
-| Objetivo actual | `Prototipo jugable v0.1 — navegación DEV Panel y sliders continuos` |
+| Objetivo actual | `Prototipo jugable v0.1 — resets global y gráfico del DEV Panel` |
 | Rama estable | `main` |
 | Rama activa | `agent/prototipo-v0-1` |
-| Último checkpoint verificable | `arrastre continuo de sliders publicado en rama activa` |
-| Estado del build | `último build previo ejecutado localmente sin errores reportados; build posterior a tabs/FX/sliders pendiente` |
-| Estado de pruebas | `arranque base validado por usuario; FX, pestañas y sliders continuos revisados estructuralmente y pendientes de build/validación visual` |
+| Último checkpoint verificable | `reset global y reset gráfico independientes publicados en rama activa` |
+| Estado del build | `último build previo ejecutado localmente sin errores reportados; build posterior a tabs/FX/sliders/resets pendiente` |
+| Estado de pruebas | `arranque base validado por usuario; cambios recientes revisados estructuralmente y pendientes de build/validación visual` |
 | Cambios locales sin publicar | `ninguno conocido` |
 | Bugs abiertos relevantes | `ninguno registrado` |
 | Última actualización | `2026-08-07` |
 
 ## Próximo paso exacto
 
-Actualizar la rama local, ejecutar `npm run build`, abrir el prototipo y validar que los sliders sigan al mouse de forma continua mientras se mantiene presionado el thumb, sin perder la pestaña activa ni interrumpir la actualización visual del juego.
+Actualizar la rama local, ejecutar `npm run build`, abrir el prototipo y validar ambos resets: el global debe devolver todo el juego a su estado inicial y el gráfico debe restaurar sólo los parámetros visuales sin alterar simulación, inventario ni depósitos.
 
 ### Criterio para considerar completado el próximo paso
 
@@ -32,9 +32,11 @@ Actualizar la rama local, ejecutar `npm run build`, abrir el prototipo y validar
 - [x] Pestañas `General` y `Gráficos` implementadas.
 - [x] `Gráficos` contiene `Entorno gráfico` y el subapartado `Efectos de extracción`.
 - [x] La pestaña activa se conserva durante rerenders del panel.
-- [x] El DEV Panel evita reconstruir sliders durante un drag activo y aplica valores en vivo mediante `input`.
-- [ ] Build local posterior a tabs/FX/sliders ejecutado y registrado.
-- [ ] Validación manual del arrastre continuo completada y registrada.
+- [x] Sliders continuos durante drag implementados.
+- [x] Reset global del juego implementado mediante `DEFAULT_CONFIG`.
+- [x] Reset gráfico independiente implementado mediante `DEFAULT_GRAPHICS_CONFIG`.
+- [ ] Build local posterior a los últimos cambios ejecutado y registrado.
+- [ ] Validación manual de ambos resets completada y registrada.
 
 ## Resumen funcional vigente
 
@@ -51,10 +53,20 @@ Actualizar la rama local, ejecutar `npm run build`, abrir el prototipo y validar
 - Un anillo por defecto; configurable entre 1 y 6 anillos escalonados dentro del mismo ciclo de extracción.
 - Navegación del DEV Panel mediante pestañas `General` y `Gráficos`.
 - Dentro de `Gráficos`: `Entorno gráfico` y subapartado `Efectos de extracción`.
-- Sliders con actualización continua: durante `pointerdown` sobre un `input[type=range]`, el panel suspende rerenders que reemplazarían el control; el valor y el efecto continúan actualizándose en tiempo real, y al soltar se procesa el render pendiente.
+- Sliders con actualización continua durante drag.
+- Botón global `RESTAURAR VALORES INICIALES` disponible desde cualquier pestaña.
+- Botón `RESTAURAR VALORES GRÁFICOS` dentro de `Gráficos`.
+
+### Contrato de restauración
+
+- `resetToDefaults()` es el reset maestro del juego. Debe evolucionar con el proyecto para devolver todos los sistemas jugables, configuraciones, inventarios, entidades y estados futuros a su valor inicial.
+- `DEFAULT_CONFIG` es la fuente de verdad de la configuración inicial global.
+- `resetGraphicsToDefaults()` restaura exclusivamente el aspecto visual y no modifica simulación, inventario ni depósitos.
+- `DEFAULT_GRAPHICS_CONFIG` es la fuente de verdad del preset visual inicial y se integra dentro de `DEFAULT_CONFIG`, por lo que el reset global también incluye siempre el reset visual.
 
 ### Preset gráfico inicial
 
+- Brillo retícula: `0.55`.
 - Anillos: `1`.
 - Diámetro inicial: `1.20×` celda.
 - Diámetro final: `0.08×` celda.
@@ -69,7 +81,7 @@ Actualizar la rama local, ejecutar `npm run build`, abrir el prototipo y validar
 - Flash: `0.35`.
 - Fade: `120 ms`.
 - Multiplicador temporal: `1.00×`.
-- Separación al usar múltiples anillos: `0.18` del ciclo.
+- Separación con múltiples anillos: `0.18` del ciclo.
 
 ### Lo ya validado localmente
 
@@ -80,10 +92,10 @@ Actualizar la rama local, ejecutar `npm run build`, abrir el prototipo y validar
 
 ### Lo que todavía falta validar
 
-- Build después de incorporar FX, pestañas y sliders continuos.
-- Arrastre sostenido de sliders sin saltos ni pérdida de captura.
-- Actualización visual del efecto mientras el slider se mueve.
-- Cambio entre `General` y `Gráficos` sin pérdida de estado.
+- Build después de incorporar FX, pestañas, sliders continuos y resets.
+- Reset global tras modificar simulación, inventario y gráficos.
+- Reset gráfico tras modificar valores visuales, verificando que el estado jugable permanezca intacto.
+- Arrastre sostenido de sliders sin saltos.
 - Comportamiento con 2–6 anillos y parámetros extremos.
 
 ## Arquitectura vigente
@@ -95,10 +107,10 @@ Actualizar la rama local, ejecutar `npm run build`, abrir el prototipo y validar
 - Persistencia: todavía no existe.
 - Entrada inicial: mouse.
 - Módulos principales:
-  - `src/game/config.js`: configuración, recursos y preset de FX.
-  - `src/game/state.js`: estado, simulación de minería y eventos de extracción.
+  - `src/game/config.js`: recursos, `DEFAULT_CONFIG` y `DEFAULT_GRAPHICS_CONFIG`.
+  - `src/game/state.js`: estado, simulación, eventos de extracción y métodos de reset.
   - `src/game/renderer.js`: retícula, recursos, interacción y capa gráfica de FX.
-  - `src/ui/devPanel.js`: tabs, controles y protección del drag continuo de sliders.
+  - `src/ui/devPanel.js`: tabs, controles, sliders continuos y acciones de restauración.
   - `src/main.js`: composición de aplicación y HUD.
 
 ## Decisiones activas
@@ -109,12 +121,13 @@ Actualizar la rama local, ejecutar `npm run build`, abrir el prototipo y validar
 | `FX-001` | Pulso como capa independiente y parametrizable | Permite tuning visual sin acoplar balance y renderer de recursos | esta bitácora |
 | `UI-001` | Crecimiento del DEV Panel mediante pestañas | Evita una columna monolítica a medida que aumenten parámetros | esta bitácora |
 | `UI-002` | Suspender rerender del panel durante drag de ranges | Evita reemplazar el elemento nativo mientras el usuario lo arrastra | esta bitácora |
+| `STATE-001` | Reset global y presets parciales componibles | Permite restaurar todo el juego o sólo un dominio sin duplicar valores iniciales | esta bitácora |
 
 ## Riesgos, deuda y bloqueos
 
 | Estado | Riesgo o bloqueo | Impacto | Acción siguiente |
 |---|---|---|---|
-| Abierto | Últimos cambios no compilados todavía tras FX/tabs/sliders | medio | ejecutar `npm run build` localmente |
+| Abierto | Últimos cambios no compilados todavía tras FX/tabs/sliders/resets | medio | ejecutar `npm run build` localmente |
 | Abierto | Parámetros extremos de 6 anillos no validados en rendimiento | bajo | probar presets extremos en navegador |
 
 ## Cómo ejecutar el proyecto
@@ -130,34 +143,50 @@ npm run dev
 npm run build
 ```
 
-Después validar manualmente: alternar General/Gráficos, arrastrar sliders manteniendo presionado el thumb, comprobar que el valor numérico y el juego cambian continuamente, y soltar confirmando que el panel queda sincronizado.
+Después validar manualmente: modificar simulación, inventario y gráficos; usar el reset gráfico y confirmar que sólo cambia lo visual; luego usar el reset global y confirmar que todo vuelve al estado inicial.
 
 ## Historial cronológico
 
-### 2026-08-07 — Arrastre continuo de sliders
+### 2026-08-07 — Resets global y gráfico independientes
 
 **Rama:** `agent/prototipo-v0-1`
 
 **Objetivo**
 
-- Hacer que los sliders acompañen el mouse de forma continua mientras se mantiene presionado el thumb.
+- Formalizar un reset maestro permanente para todo el juego y un reset visual independiente para experimentación gráfica.
 
 **Cambios realizados**
 
-- Se mantiene el evento nativo `input` para aplicar cada valor durante el drag.
-- Se detecta `pointerdown` sobre sliders y se suspende temporalmente el rerender completo del DEV Panel.
-- Los eventos de estado siguen actualizando el juego en vivo, pero el control arrastrado no es reemplazado en DOM.
-- Al recibir `pointerup`, `pointercancel` o pérdida de foco, se libera el drag y se procesa cualquier render pendiente.
+- Creado `DEFAULT_GRAPHICS_CONFIG` como preset visual inicial.
+- `DEFAULT_CONFIG` incorpora el preset gráfico para que el reset global siempre incluya los valores visuales.
+- Añadido `resetGraphicsToDefaults()` sin alterar inventario, depósitos o simulación.
+- Conservado `resetToDefaults()` como contrato de reset completo del juego.
+- Añadido botón `RESTAURAR VALORES GRÁFICOS` dentro de la pestaña `Gráficos`.
+- Actualizada la descripción del botón global para explicitar su alcance futuro.
 
 **Pruebas ejecutadas**
 
 - Revisión estructural remota: realizada.
 - Build posterior al cambio: pendiente.
-- Validación manual de drag: pendiente.
+- Validación manual de resets: pendiente.
 
 **Estado al cerrar**
 
-- Mejora publicada en rama activa; pendiente de validación local.
+- Implementación publicada en rama activa; pendiente de validación local.
+
+### 2026-08-07 — Reset global del DEV Panel
+
+**Rama:** `agent/prototipo-v0-1`
+
+- Añadido botón global `RESTAURAR VALORES INICIALES`.
+- El reset devuelve configuración a `DEFAULT_CONFIG`, inventario a cero y regenera depósitos con cantidades iniciales.
+
+### 2026-08-07 — Arrastre continuo de sliders
+
+**Rama:** `agent/prototipo-v0-1`
+
+- Se mantiene el evento nativo `input` durante drag.
+- Se suspende temporalmente el rerender completo del DEV Panel mientras se arrastra un range.
 
 ### 2026-08-07 — Primera navegación por pestañas del DEV Panel
 
@@ -166,7 +195,6 @@ Después validar manualmente: alternar General/Gráficos, arrastrar sliders mant
 - Añadidas pestañas `General` y `Gráficos`.
 - Conservados Simulación, Inventario y Depósitos activos en `General`.
 - Creado `Entorno gráfico` y el subapartado `Efectos de extracción`.
-- Conservada la pestaña activa durante rerenders.
 
 ### 2026-08-07 — Pulso gráfico de extracción parametrizable
 
