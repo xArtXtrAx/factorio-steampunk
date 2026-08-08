@@ -26,15 +26,29 @@ function numberControl(label, value, min, max, step, onInput) {
   number.step = step;
   number.value = value;
 
+  const normalize = (raw) => {
+    const parsed = Number(raw);
+    const fallback = Number(value);
+    const numeric = Number.isFinite(parsed) ? parsed : fallback;
+    return Math.max(Number(min), Math.min(Number(max), numeric));
+  };
+
   const sync = (raw) => {
-    const next = Math.max(Number(min), Math.min(Number(max), Number(raw)));
+    const next = normalize(raw);
     range.value = next;
     number.value = next;
     onInput(next);
   };
 
+  // El slider sigue siendo continuo. El campo numérico se confirma al terminar
+  // (blur/cambio o Enter), para permitir escribir cifras completas sin perder foco.
   range.addEventListener('input', () => sync(range.value));
-  number.addEventListener('input', () => sync(number.value));
+  number.addEventListener('change', () => sync(number.value));
+  number.addEventListener('keydown', (event) => {
+    if (Number(min) >= 0 && (event.key === '-' || event.key === 'Subtract')) event.preventDefault();
+    if (event.key === 'Enter') number.blur();
+  });
+
   fields.append(range, number);
   row.append(fields);
   return row;
@@ -200,9 +214,18 @@ export function mountDevPanel(state, host) {
 
     const inventory = document.createElement('section');
     inventory.className = 'dev-section';
-    inventory.innerHTML = '<h2>Inventario</h2>';
+    inventory.innerHTML = `<h2>Inventario</h2><p class="dev-subsection-note">Los campos numéricos se confirman al terminar de escribir o al pulsar Enter. Valores negativos están bloqueados. Máximo editable actual: <strong>${Math.floor(state.config.inventoryEditMax).toLocaleString('es-MX')}</strong>.</p>`;
+    inventory.append(numberControl(
+      'Límite máximo editable',
+      state.config.inventoryEditMax,
+      1,
+      1000000,
+      1,
+      (value) => state.setConfig('inventoryEditMax', Math.max(1, Math.floor(value))),
+    ));
     Object.entries(RESOURCE_TYPES).forEach(([type, meta]) => {
-      inventory.append(numberControl(meta.label, state.inventory[type], 0, 100000, 1, (value) => state.setInventory(type, value)));
+      const maxEditable = Math.max(1, Math.floor(Number(state.config.inventoryEditMax) || 1));
+      inventory.append(numberControl(meta.label, state.inventory[type], 0, maxEditable, 1, (value) => state.setInventory(type, value)));
     });
     host.append(inventory);
 
