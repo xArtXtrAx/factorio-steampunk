@@ -152,7 +152,10 @@ export function mountDevPanel(state, host) {
       actions.className = 'profile-actions';
 
       if (entry) {
-        actions.append(actionButton('CARGAR', () => state.restoreStartProfile(entry.snapshot)));
+        actions.append(actionButton('CARGAR', () => {
+          const restored = state.restoreStartProfile(entry.snapshot);
+          if (!restored) window.alert(`Temporal ${index + 1} no pudo restaurarse; el snapshot parece incompatible.`);
+        }));
         actions.append(actionButton('SOBRESCRIBIR', () => {
           if (!window.confirm(`¿Sobrescribir Temporal ${index + 1} con el estado actual?`)) return;
           const saved = saveTemporaryStartProfile(index, state.captureStartProfile());
