@@ -11,7 +11,7 @@ Este archivo es el punto de entrada permanente para reanudar el proyecto sin dep
 | Rama activa | `agent/extractor-v0-2` |
 | Fase u objetivo actual | `v0.2 — Extractor Mk.I + economía + perfiles de arranque DEV` |
 | Estado | `extractor, economía, panel jugador y sistema de perfiles DEV implementados; validación del checkpoint de perfiles pendiente` |
-| Commit remoto de referencia | `0943adff54405c67ce259cd7ad1ede04deb66f39` |
+| Commit remoto de referencia | `ea4e52fc10d0d03762ea2c13e5da7ae7efe7df97` |
 | Base estable v0.1 | `merge fe55692aa95adea043c19d8f1f8b121003c5c1d9` |
 | PR activo | `#2 Implementa extractor de combustión Mk.I (draft)` |
 | Validación | `apariencia general/minimalista del extractor validada positivamente por el usuario; economía, panel jugador y perfiles persistentes pendientes de recorrido manual completo` |
