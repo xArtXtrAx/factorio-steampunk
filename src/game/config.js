@@ -32,6 +32,12 @@ export const DEFAULT_GRAPHICS_CONFIG = {
   extractorBodyColor: '#5b4937',
   extractorBrassColor: '#c49445',
   extractorGlowColor: '#58ffe3',
+
+  hopperVisualScale: 0.72,
+  hopperGlowIntensity: 0.55,
+  hopperBodyColor: '#40362c',
+  hopperBrassColor: '#c49445',
+  hopperFillColor: '#58ffe3',
 };
 
 export const DEFAULT_CONFIG = {
@@ -57,6 +63,14 @@ export const DEFAULT_CONFIG = {
   extractorCostCopper: 10,
   extractorCostStone: 10,
   extractorCostCoal: 0,
+
+  hopperCapacity: 50,
+  hopperCostIron: 10,
+  hopperCostCopper: 5,
+  hopperCostStone: 5,
+  hopperCostCoal: 0,
+  extractorGlobalOutputFallback: true,
+  hopperBlocksExtractorWhenFull: true,
 
   ...DEFAULT_GRAPHICS_CONFIG,
 };
