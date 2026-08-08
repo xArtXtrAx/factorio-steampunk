@@ -107,6 +107,98 @@ export class GameState {
     this.touch();
   }
 
+  captureStartProfile() {
+    return {
+      schemaVersion: 1,
+      config: { ...this.config },
+      inventory: { ...this.inventory },
+      deposits: this.deposits.map((deposit) => ({ ...deposit })),
+      extractors: this.extractors.map((extractor) => ({ ...extractor })),
+      extractorStock: this.extractorStock,
+    };
+  }
+
+  restoreStartProfile(snapshot) {
+    if (!snapshot || typeof snapshot !== 'object') return false;
+
+    const nextConfig = { ...DEFAULT_CONFIG };
+    Object.entries(DEFAULT_CONFIG).forEach(([key, defaultValue]) => {
+      const candidate = snapshot.config?.[key];
+      if (typeof defaultValue === 'number') {
+        const parsed = Number(candidate);
+        if (Number.isFinite(parsed)) nextConfig[key] = parsed;
+      } else if (typeof defaultValue === 'boolean') {
+        if (typeof candidate === 'boolean') nextConfig[key] = candidate;
+      } else if (typeof defaultValue === 'string') {
+        if (typeof candidate === 'string') nextConfig[key] = candidate;
+      }
+    });
+    nextConfig.gridColumns = clampInt(nextConfig.gridColumns, 8, 60);
+    nextConfig.gridRows = clampInt(nextConfig.gridRows, 8, 60);
+
+    const nextInventory = Object.fromEntries(Object.keys(RESOURCE_TYPES).map((type) => [
+      type,
+      Math.max(0, Number(snapshot.inventory?.[type]) || 0),
+    ]));
+
+    const occupied = new Set();
+    const ids = new Set();
+    const nextDeposits = Array.isArray(snapshot.deposits)
+      ? snapshot.deposits.flatMap((rawDeposit) => {
+        if (!rawDeposit || !(rawDeposit.type in RESOURCE_TYPES)) return [];
+        const x = clampInt(rawDeposit.x, 0, nextConfig.gridColumns - 1);
+        const y = clampInt(rawDeposit.y, 0, nextConfig.gridRows - 1);
+        const cellKey = `${x}:${y}`;
+        if (occupied.has(cellKey)) return [];
+        occupied.add(cellKey);
+        let id = typeof rawDeposit.id === 'string' && rawDeposit.id ? rawDeposit.id : `${rawDeposit.type}-${crypto.randomUUID()}`;
+        if (ids.has(id)) id = `${rawDeposit.type}-${crypto.randomUUID()}`;
+        ids.add(id);
+        return [{
+          id,
+          type: rawDeposit.type,
+          x,
+          y,
+          amount: Math.max(0, Number(rawDeposit.amount) || 0),
+        }];
+      })
+      : [];
+
+    if (!nextDeposits.length) return false;
+
+    const depositIds = new Set(nextDeposits.map((deposit) => deposit.id));
+    const usedDeposits = new Set();
+    const nextExtractors = Array.isArray(snapshot.extractors)
+      ? snapshot.extractors.flatMap((rawExtractor) => {
+        if (!rawExtractor || !depositIds.has(rawExtractor.depositId) || usedDeposits.has(rawExtractor.depositId)) return [];
+        usedDeposits.add(rawExtractor.depositId);
+        return [{
+          id: typeof rawExtractor.id === 'string' && rawExtractor.id ? rawExtractor.id : `extractor-${crypto.randomUUID()}`,
+          depositId: rawExtractor.depositId,
+          fuelBuffer: clampInt(rawExtractor.fuelBuffer, 0, Math.max(0, nextConfig.extractorFuelBufferCapacity)),
+          fuelWorkRemaining: Math.max(0, Number(rawExtractor.fuelWorkRemaining) || 0),
+          workAccumulator: Math.max(0, Number(rawExtractor.workAccumulator) || 0),
+          producedTotal: Math.max(0, Number(rawExtractor.producedTotal) || 0),
+          enabled: rawExtractor.enabled !== false,
+          status: typeof rawExtractor.status === 'string' ? rawExtractor.status : 'en espera',
+        }];
+      })
+      : [];
+
+    this.config = nextConfig;
+    this.inventory = nextInventory;
+    this.deposits = nextDeposits;
+    this.extractors = nextExtractors;
+    this.extractorStock = clampInt(snapshot.extractorStock, 0, 9999);
+    this.placementMode = null;
+    this.miningTargetId = null;
+    this.miningAccumulator = 0;
+    this.extractionSerial = 0;
+    this.lastExtraction = null;
+    this.touch();
+    return true;
+  }
+
   setGridSize(value) {
     const nextSize = clampInt(value, 8, 60);
     const previousColumns = Math.max(1, this.config.gridColumns);
