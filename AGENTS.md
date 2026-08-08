@@ -18,7 +18,10 @@ Antes de proponer o modificar código:
 
 - Realizar cambios acotados y coherentes con el objetivo vigente.
 - No introducir dependencias ni cambios arquitectónicos silenciosos.
-- Toda configuración jugable nueva debe evaluarse para exposición en el DEV Panel.
+- **Toda mecánica nueva debe exponer desde su implementación los parámetros de balance relevantes en el DEV Panel**, ubicados contextualmente en la pestaña o subsección adecuada.
+- **Toda presentación, animación o FX nuevo debe exponer tuning visual razonable en `Gráficos`** cuando tenga parámetros útiles para experimentación.
+- Los estados de entidades nuevas deben ser inspeccionables y, cuando sea razonable, manipulables desde DEV.
+- Los presets iniciales son hipótesis de diseño y deben poder afinarse desde DEV antes de consolidarse como balance definitivo.
 - Mantener simulación, render y UI desacoplados siempre que sea razonable.
 - Ejecutar pruebas pertinentes antes de declarar completada una tarea.
 - Distinguir entre implementado, revisado estructuralmente, verificado automáticamente y validado manualmente.
