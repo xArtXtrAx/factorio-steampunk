@@ -51,6 +51,8 @@ export class GameRenderer {
 
     this.host.appendChild(this.app.canvas);
     this.app.stage.addChild(this.gridLayer, this.resourceLayer, this.machineLayer, this.fxLayer);
+    this.gridLayer.eventMode = 'static';
+    this.gridLayer.on('pointerdown', (event) => this.handleGridPointerDown(event));
     this.app.ticker.add((ticker) => this.frame(ticker.deltaMS / 1000));
     window.addEventListener('pointerup', () => this.state.stopMining());
     window.addEventListener('pointercancel', () => this.state.stopMining());
@@ -79,19 +81,43 @@ export class GameRenderer {
     };
   }
 
-  getDepositCenter(deposit) {
+  getCellCenter(gridX, gridY) {
     const { cell, x, y } = this.getLayout();
     return {
       cell,
-      cx: x + deposit.x * cell + cell / 2,
-      cy: y + deposit.y * cell + cell / 2,
+      cx: x + gridX * cell + cell / 2,
+      cy: y + gridY * cell + cell / 2,
     };
+  }
+
+  getDepositCenter(deposit) {
+    return this.getCellCenter(deposit.x, deposit.y);
+  }
+
+  handleGridPointerDown(event) {
+    if (event.button !== 0) return;
+    const { cell, x, y, gridWidth, gridHeight } = this.getLayout();
+    const localX = event.global.x - x;
+    const localY = event.global.y - y;
+    if (localX < 0 || localY < 0 || localX >= gridWidth || localY >= gridHeight) return;
+    const gridX = Math.floor(localX / cell);
+    const gridY = Math.floor(localY / cell);
+
+    if (this.state.placementMode === 'storageHopper') {
+      this.state.placeHopper(gridX, gridY);
+      return;
+    }
+    if (this.state.placementMode) return;
+
+    const hopper = this.state.hoppers.find((item) => item.x === gridX && item.y === gridY);
+    if (hopper) this.state.collectHopper(hopper.id);
   }
 
   drawGrid() {
     const { gridColumns, gridRows, gridGlow } = this.state.config;
     const { cell, x, y, gridWidth, gridHeight } = this.getLayout();
     this.gridLayer.clear();
+    this.gridLayer.cursor = this.state.placementMode === 'storageHopper' ? 'copy' : 'default';
     this.gridLayer.rect(x, y, gridWidth, gridHeight).fill({ color: 0x11100f, alpha: 0.72 });
 
     for (let col = 0; col <= gridColumns; col += 1) {
@@ -135,6 +161,7 @@ export class GameRenderer {
           this.state.placeExtractor(deposit.id);
           return;
         }
+        if (this.state.placementMode) return;
         if (!extractor) this.state.startMining(deposit.id);
       });
 
@@ -161,7 +188,6 @@ export class GameRenderer {
       this.visualMiningClock = 0;
       this.lastMiningTargetId = targetId;
     }
-
     if (!targetId) return;
     const timeScale = Math.max(0.05, Number(this.state.config.pulseTimeScale) || 1);
     this.visualMiningClock += (deltaSeconds * this.state.config.miningRate) / timeScale;
@@ -233,11 +259,7 @@ export class GameRenderer {
 
       const fuelProgress = clamp(extractor.fuelWorkRemaining / efficiency);
       const ringRadius = Math.max(3, half * 0.92);
-      this.machineLayer.circle(cx, cy, ringRadius).stroke({
-        color: 0x30281f,
-        width: fuelRingWidth,
-        alpha: 0.8,
-      });
+      this.machineLayer.circle(cx, cy, ringRadius).stroke({ color: 0x30281f, width: fuelRingWidth, alpha: 0.8 });
       if (fuelProgress > 0) {
         const segments = Math.max(1, Math.floor(24 * fuelProgress));
         for (let i = 0; i < segments; i += 1) {
@@ -253,6 +275,55 @@ export class GameRenderer {
         const warningColor = extractor.status === 'depósito agotado' ? 0x777777 : 0xff8b42;
         this.machineLayer.circle(cx + half * 0.68, cy - half * 0.68, Math.max(2, cell * 0.065))
           .fill({ color: warningColor, alpha: 0.95 });
+      }
+    });
+
+    this.drawHoppers();
+  }
+
+  drawHoppers() {
+    const config = this.state.config;
+    const bodyColor = colorNumber(config.hopperBodyColor, 0x40362c);
+    const brassColor = colorNumber(config.hopperBrassColor, 0xc49445);
+    const fillColor = colorNumber(config.hopperFillColor, 0x58ffe3);
+    const scale = clamp(Number(config.hopperVisualScale) || 0.72, 0.3, 1.1);
+    const glowIntensity = clamp(Number(config.hopperGlowIntensity) || 0);
+    const capacity = Math.max(1, Number(config.hopperCapacity) || 1);
+
+    this.state.hoppers.forEach((hopper) => {
+      const { cell, cx, cy } = this.getCellCenter(hopper.x, hopper.y);
+      const size = cell * scale;
+      const half = size / 2;
+      const lip = Math.max(2, cell * 0.08);
+      const fillRatio = clamp(hopper.amount / capacity);
+
+      this.machineLayer.roundRect(cx - half, cy - half, size, size, Math.max(3, cell * 0.08))
+        .fill({ color: bodyColor, alpha: 0.96 })
+        .stroke({ color: brassColor, width: Math.max(1, cell * 0.045), alpha: 0.95 });
+      this.machineLayer.rect(cx - half * 0.82, cy - half * 0.72, size * 0.82, size * 1.44)
+        .stroke({ color: 0x211b16, width: Math.max(1, cell * 0.025), alpha: 0.9 });
+      this.machineLayer.rect(cx + half * 0.05, cy - half * 0.72, size * 0.36, size * 1.44)
+        .stroke({ color: 0x211b16, width: Math.max(1, cell * 0.025), alpha: 0.9 });
+      this.machineLayer.moveTo(cx - half * 0.82, cy - half + lip)
+        .lineTo(cx + half * 0.82, cy - half + lip)
+        .stroke({ color: brassColor, width: Math.max(1, cell * 0.035), alpha: 0.9 });
+
+      if (fillRatio > 0) {
+        const innerWidth = size * 0.72;
+        const innerHeight = size * 0.62;
+        const filledHeight = innerHeight * fillRatio;
+        this.machineLayer.rect(cx - innerWidth / 2, cy + innerHeight / 2 - filledHeight, innerWidth, filledHeight)
+          .fill({ color: fillColor, alpha: 0.22 + fillRatio * 0.38 });
+        if (glowIntensity > 0) {
+          this.machineLayer.rect(cx - innerWidth / 2, cy + innerHeight / 2 - filledHeight, innerWidth, Math.max(1, cell * 0.035))
+            .fill({ color: fillColor, alpha: glowIntensity * 0.85 });
+        }
+      }
+
+      if (hopper.resourceType) {
+        const resourceColor = RESOURCE_TYPES[hopper.resourceType].glow;
+        this.machineLayer.circle(cx, cy - half * 0.46, Math.max(2, cell * 0.055))
+          .fill({ color: resourceColor, alpha: 0.95 });
       }
     });
   }
@@ -272,7 +343,6 @@ export class GameRenderer {
       const delay = index * spacing;
       const localPhase = (phase - delay) / ringLife;
       if (localPhase < 0 || localPhase >= 1) continue;
-
       const eased = ease(config.pulseEasing, localPhase);
       const sizeOffset = 1 + index * config.pulseRingSizeOffset;
       const startRadius = cell * config.pulseStartScale * sizeOffset * 0.5;
@@ -324,7 +394,6 @@ export class GameRenderer {
       width: Math.max(2, config.pulseGlowSize * (1 - t)),
       alpha: flashAlpha,
     });
-
     if (t >= 1) this.impactFlash = null;
   }
 

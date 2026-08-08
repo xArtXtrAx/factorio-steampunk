@@ -40,8 +40,6 @@ function numberControl(label, value, min, max, step, onInput) {
     onInput(next);
   };
 
-  // El slider sigue siendo continuo. El campo numérico se confirma al terminar
-  // (blur/cambio o Enter), para permitir escribir cifras completas sin perder foco.
   range.addEventListener('input', () => sync(range.value));
   number.addEventListener('change', () => sync(number.value));
   number.addEventListener('keydown', (event) => {
@@ -151,7 +149,7 @@ export function mountDevPanel(state, host) {
 
     const original = document.createElement('div');
     original.className = 'profile-card profile-card-locked';
-    original.innerHTML = '<div class="profile-card-heading"><strong>Original · bloqueado</strong><span>BASE CANÓNICA</span></div><p>30×30 · inventario 0 · depósitos iniciales aleatorios · sin extractores. No puede sobrescribirse.</p>';
+    original.innerHTML = '<div class="profile-card-heading"><strong>Original · bloqueado</strong><span>BASE CANÓNICA</span></div><p>30×30 · inventario 0 · yacimientos iniciales aleatorios · sin máquinas ni tolvas. No puede sobrescribirse.</p>';
     original.append(actionButton('CARGAR PERFIL ORIGINAL', () => state.resetToDefaults(), 'Restaura siempre DEFAULT_CONFIG y el estado inicial canónico del proyecto.'));
     section.append(original);
 
@@ -164,7 +162,6 @@ export function mountDevPanel(state, host) {
 
       const actions = document.createElement('div');
       actions.className = 'profile-actions';
-
       if (entry) {
         actions.append(actionButton('CARGAR', () => {
           const restored = state.restoreStartProfile(entry.snapshot);
@@ -183,11 +180,9 @@ export function mountDevPanel(state, host) {
           render();
         }));
       }
-
       card.append(actions);
       section.append(card);
     }
-
     host.append(section);
   };
 
@@ -197,32 +192,34 @@ export function mountDevPanel(state, host) {
     const grid = document.createElement('section');
     grid.className = 'dev-section';
     const totalCells = state.config.gridColumns * state.config.gridRows;
-    grid.innerHTML = `<h2>Retícula</h2><p class="dev-subsection-note">Actual: <strong>${state.config.gridColumns} × ${state.config.gridRows}</strong> · ${totalCells.toLocaleString('es-MX')} cuadros. Los recursos conservan sus cantidades y se recolocan proporcionalmente al cambiar el tamaño.</p>`;
+    grid.innerHTML = `<h2>Retícula</h2><p class="dev-subsection-note">Actual: <strong>${state.config.gridColumns} × ${state.config.gridRows}</strong> · ${totalCells.toLocaleString('es-MX')} cuadros. Recursos y tolvas se recolocan proporcionalmente al cambiar el tamaño.</p>`;
     grid.append(numberControl('Tamaño de retícula (N × N)', state.config.gridColumns, 8, 60, 1, (value) => state.setGridSize(value)));
     host.append(grid);
 
     const simulation = document.createElement('section');
     simulation.className = 'dev-section';
     simulation.innerHTML = '<h2>Simulación</h2>';
-    simulation.append(
-      numberControl('Extracción manual / s', state.config.miningRate, 0.1, 20, 0.1, (value) => state.setConfig('miningRate', value)),
-      numberControl('Reserva inicial', state.config.initialDepositAmount, 1, 10000, 1, (value) => state.setConfig('initialDepositAmount', value)),
-      numberControl('Radio aparición', state.config.spawnRadius, 1, 14, 1, (value) => state.setConfig('spawnRadius', value)),
-      actionButton('REGENERAR DEPÓSITOS', () => state.regenerateDeposits()),
-    );
+    simulation.append(numberControl('Extracción manual / s', state.config.miningRate, 0.1, 20, 0.1, (value) => state.setConfig('miningRate', value)));
     host.append(simulation);
+
+    const generation = document.createElement('section');
+    generation.className = 'dev-section';
+    generation.innerHTML = '<h2>Generación de recursos</h2><p class="dev-subsection-note">Cada recurso aparece en varios yacimientos multicelda. Los cambios se aplican al pulsar regenerar; regenerar devuelve extractores y tolvas instalados a su stock.</p>';
+    generation.append(
+      numberControl('Yacimientos por recurso', state.config.resourceVeinsPerType, 1, 12, 1, (value) => state.setConfig('resourceVeinsPerType', Math.floor(value))),
+      numberControl('Tamaño mínimo (celdas)', state.config.resourceVeinMinCells, 1, 30, 1, (value) => state.setConfig('resourceVeinMinCells', Math.min(Math.floor(value), Math.floor(state.config.resourceVeinMaxCells)))),
+      numberControl('Tamaño máximo (celdas)', state.config.resourceVeinMaxCells, 1, 30, 1, (value) => state.setConfig('resourceVeinMaxCells', Math.max(Math.floor(value), Math.floor(state.config.resourceVeinMinCells)))),
+      numberControl('Reserva por celda', state.config.initialDepositAmount, 1, 10000, 1, (value) => state.setConfig('initialDepositAmount', value)),
+      numberControl('Radio aparición', state.config.spawnRadius, 1, 30, 1, (value) => state.setConfig('spawnRadius', value)),
+      numberControl('Irregularidad', state.config.resourceVeinIrregularity, 0, 1, 0.05, (value) => state.setConfig('resourceVeinIrregularity', value)),
+      actionButton('REGENERAR YACIMIENTOS', () => state.regenerateDeposits()),
+    );
+    host.append(generation);
 
     const inventory = document.createElement('section');
     inventory.className = 'dev-section';
     inventory.innerHTML = `<h2>Inventario</h2><p class="dev-subsection-note">Los campos numéricos se confirman al terminar de escribir o al pulsar Enter. Valores negativos están bloqueados. Máximo editable actual: <strong>${Math.floor(state.config.inventoryEditMax).toLocaleString('es-MX')}</strong>.</p>`;
-    inventory.append(numberControl(
-      'Límite máximo editable',
-      state.config.inventoryEditMax,
-      1,
-      1000000,
-      1,
-      (value) => state.setConfig('inventoryEditMax', Math.max(1, Math.floor(value))),
-    ));
+    inventory.append(numberControl('Límite máximo editable', state.config.inventoryEditMax, 1, 1000000, 1, (value) => state.setConfig('inventoryEditMax', Math.max(1, Math.floor(value)))));
     Object.entries(RESOURCE_TYPES).forEach(([type, meta]) => {
       const maxEditable = Math.max(1, Math.floor(Number(state.config.inventoryEditMax) || 1));
       inventory.append(numberControl(meta.label, state.inventory[type], 0, maxEditable, 1, (value) => state.setInventory(type, value)));
@@ -231,10 +228,24 @@ export function mountDevPanel(state, host) {
 
     const deposits = document.createElement('section');
     deposits.className = 'dev-section';
-    deposits.innerHTML = '<h2>Depósitos activos</h2>';
+    const veinIds = [...new Set(state.deposits.map((deposit) => deposit.veinId))];
+    deposits.innerHTML = `<h2>Yacimientos activos</h2><p class="dev-subsection-note">${veinIds.length} yacimientos · ${state.deposits.length} celdas de recurso. Cada celda mantiene su reserva propia.</p>`;
+    const grouped = new Map();
     state.deposits.forEach((deposit) => {
-      const meta = RESOURCE_TYPES[deposit.type];
-      deposits.append(numberControl(`${meta.label} [${deposit.x},${deposit.y}]`, deposit.amount, 0, 10000, 1, (value) => state.setDepositAmount(deposit.id, value)));
+      const key = deposit.veinId || `${deposit.type}-legacy-${deposit.id}`;
+      if (!grouped.has(key)) grouped.set(key, []);
+      grouped.get(key).push(deposit);
+    });
+    grouped.forEach((cells) => {
+      const first = cells[0];
+      const meta = RESOURCE_TYPES[first.type];
+      const block = document.createElement('div');
+      block.className = 'dev-subsection';
+      block.innerHTML = `<h3>${meta.label} · ${cells.length} celda(s)</h3>`;
+      cells.sort((a, b) => a.y - b.y || a.x - b.x).forEach((deposit) => {
+        block.append(numberControl(`[${deposit.x},${deposit.y}]`, deposit.amount, 0, 10000, 1, (value) => state.setDepositAmount(deposit.id, value)));
+      });
+      deposits.append(block);
     });
     host.append(deposits);
   };
@@ -242,7 +253,7 @@ export function mountDevPanel(state, host) {
   const renderMachines = () => {
     const mechanics = document.createElement('section');
     mechanics.className = 'dev-section';
-    mechanics.innerHTML = '<h2>Extractor de combustión Mk.I</h2><p class="dev-subsection-note">Primer sistema automático. El preset inicial produce 1 recurso/s, convierte 1 carbón en 10 unidades de trabajo y cuesta 20 hierro + 10 cobre + 10 piedra.</p>';
+    mechanics.innerHTML = '<h2>Extractor de combustión Mk.I</h2><p class="dev-subsection-note">Produce recursos desde una celda de yacimiento. Su salida puede ir a una Tolva Mk.I adyacente; esa política se controla desde Logística.</p>';
     mechanics.append(
       numberControl('Producción / s', state.config.extractorMiningRate, 0.1, 20, 0.1, (value) => state.setConfig('extractorMiningRate', value)),
       numberControl('Recursos por carbón', state.config.extractorResourcesPerCoal, 1, 100, 1, (value) => state.setConfig('extractorResourcesPerCoal', value)),
@@ -253,7 +264,7 @@ export function mountDevPanel(state, host) {
 
     const economy = document.createElement('div');
     economy.className = 'dev-subsection';
-    economy.innerHTML = '<h3>Economía y stock</h3><p class="dev-subsection-note">Costos de compra del panel del jugador y cantidad de máquinas no instaladas.</p>';
+    economy.innerHTML = '<h3>Economía y stock</h3>';
     economy.append(
       numberControl('Costo hierro', state.config.extractorCostIron, 0, 500, 1, (value) => state.setConfig('extractorCostIron', value)),
       numberControl('Costo cobre', state.config.extractorCostCopper, 0, 500, 1, (value) => state.setConfig('extractorCostCopper', value)),
@@ -266,38 +277,31 @@ export function mountDevPanel(state, host) {
     const placementNote = document.createElement('p');
     placementNote.className = 'dev-subsection-note';
     placementNote.textContent = state.placementMode === 'burnerExtractor'
-      ? 'Modo colocación activo: haz click sobre un depósito sin extractor.'
-      : state.extractorStock > 0
-        ? 'Hay extractores disponibles. Pulsa colocar y selecciona un depósito.'
-        : 'No hay extractores disponibles; compra uno en el panel de juego o ajusta el stock aquí.';
+      ? 'Modo colocación activo: haz click sobre una celda de recurso sin extractor.'
+      : 'La colocación consume una máquina del stock; retirar la recupera.';
     mechanics.append(
       placementNote,
-      actionButton(
-        state.placementMode === 'burnerExtractor' ? 'CANCELAR COLOCACIÓN' : 'COLOCAR EXTRACTOR Mk.I',
-        () => state.placementMode === 'burnerExtractor' ? state.cancelPlacement() : state.beginExtractorPlacement(),
-      ),
+      actionButton(state.placementMode === 'burnerExtractor' ? 'CANCELAR COLOCACIÓN' : 'COLOCAR EXTRACTOR Mk.I', () => state.placementMode === 'burnerExtractor' ? state.cancelPlacement() : state.beginExtractorPlacement()),
       actionButton('RETIRAR TODOS LOS EXTRACTORES', () => state.removeAllExtractors()),
     );
     host.append(mechanics);
 
     const active = document.createElement('section');
     active.className = 'dev-section';
-    active.innerHTML = `<h2>Extractores activos</h2><p class="dev-subsection-note">${state.extractors.length} instalado(s) · ${state.extractorStock} disponible(s). Retirar una máquina la devuelve al stock, no a materiales.</p>`;
-
+    active.innerHTML = `<h2>Extractores activos</h2><p class="dev-subsection-note">${state.extractors.length} instalado(s) · ${state.extractorStock} disponible(s).</p>`;
     if (!state.extractors.length) {
       const empty = document.createElement('p');
       empty.className = 'dev-subsection-note';
       empty.textContent = 'Todavía no hay extractores instalados.';
       active.append(empty);
     }
-
     state.extractors.forEach((extractor, index) => {
       const deposit = state.deposits.find((item) => item.id === extractor.depositId);
       const meta = deposit ? RESOURCE_TYPES[deposit.type] : { label: 'Sin depósito' };
       const coords = deposit ? `[${deposit.x},${deposit.y}]` : '[?,?]';
       const machine = document.createElement('div');
       machine.className = 'dev-subsection';
-      machine.innerHTML = `<h3>Extractor ${index + 1} · ${meta.label} ${coords}</h3><p class="dev-subsection-note">Estado: <strong>${extractor.status}</strong> · producido: ${Math.floor(extractor.producedTotal)} · trabajo del combustible: ${extractor.fuelWorkRemaining.toFixed(1)}</p>`;
+      machine.innerHTML = `<h3>Extractor ${index + 1} · ${meta.label} ${coords}</h3><p class="dev-subsection-note">Estado: <strong>${extractor.status}</strong> · producido: ${Math.floor(extractor.producedTotal)} · trabajo combustible: ${extractor.fuelWorkRemaining.toFixed(1)}</p>`;
       machine.append(
         toggleControl('Activo', extractor.enabled, (value) => state.setExtractorEnabled(extractor.id, value)),
         numberControl('Carbón en buffer', extractor.fuelBuffer, 0, Math.max(0, state.config.extractorFuelBufferCapacity), 1, (value) => state.setExtractorFuel(extractor.id, value)),
@@ -308,25 +312,81 @@ export function mountDevPanel(state, host) {
     host.append(active);
   };
 
+  const renderLogistics = () => {
+    const hopper = document.createElement('section');
+    hopper.className = 'dev-section';
+    hopper.innerHTML = '<h2>Tolva Mk.I</h2><p class="dev-subsection-note">Almacenamiento local 1×1. Un extractor entrega primero a tolvas ortogonalmente adyacentes compatibles. Cada tolva contiene un solo tipo de recurso.</p>';
+    hopper.append(
+      numberControl('Capacidad', state.config.hopperCapacity, 1, 1000, 1, (value) => state.setConfig('hopperCapacity', Math.floor(value))),
+      toggleControl('Salida global si no hay tolva', state.config.extractorGlobalOutputFallback, (value) => state.setConfig('extractorGlobalOutputFallback', value)),
+      toggleControl('Bloquear extractor si salida local no acepta', state.config.hopperBlocksExtractorWhenFull, (value) => state.setConfig('hopperBlocksExtractorWhenFull', value)),
+    );
+
+    const economy = document.createElement('div');
+    economy.className = 'dev-subsection';
+    economy.innerHTML = '<h3>Economía y stock</h3><p class="dev-subsection-note">Preset inicial: 10 hierro + 5 cobre + 5 piedra; capacidad 50.</p>';
+    economy.append(
+      numberControl('Costo hierro', state.config.hopperCostIron, 0, 500, 1, (value) => state.setConfig('hopperCostIron', value)),
+      numberControl('Costo cobre', state.config.hopperCostCopper, 0, 500, 1, (value) => state.setConfig('hopperCostCopper', value)),
+      numberControl('Costo piedra', state.config.hopperCostStone, 0, 500, 1, (value) => state.setConfig('hopperCostStone', value)),
+      numberControl('Costo carbón', state.config.hopperCostCoal, 0, 500, 1, (value) => state.setConfig('hopperCostCoal', value)),
+      numberControl('Tolvas disponibles', state.hopperStock, 0, 100, 1, (value) => state.setHopperStock(value)),
+    );
+    hopper.append(economy);
+
+    const placement = document.createElement('p');
+    placement.className = 'dev-subsection-note';
+    placement.textContent = state.placementMode === 'storageHopper'
+      ? 'Modo colocación activo: selecciona una celda vacía del mapa.'
+      : 'La tolva puede colocarse en cualquier celda vacía; para recibir del extractor debe quedar a distancia cardinal 1.';
+    hopper.append(
+      placement,
+      actionButton(state.placementMode === 'storageHopper' ? 'CANCELAR COLOCACIÓN' : 'COLOCAR TOLVA Mk.I', () => state.placementMode === 'storageHopper' ? state.cancelPlacement() : state.beginHopperPlacement()),
+      actionButton('RETIRAR TODAS LAS TOLVAS', () => state.removeAllHoppers()),
+    );
+    host.append(hopper);
+
+    const active = document.createElement('section');
+    active.className = 'dev-section';
+    active.innerHTML = `<h2>Tolvas activas</h2><p class="dev-subsection-note">${state.hoppers.length} instalada(s) · ${state.hopperStock} disponible(s). Desde aquí puedes forzar contenido, vaciar, recoger o retirar para probar estados.</p>`;
+    if (!state.hoppers.length) {
+      const empty = document.createElement('p');
+      empty.className = 'dev-subsection-note';
+      empty.textContent = 'Todavía no hay tolvas instaladas.';
+      active.append(empty);
+    }
+
+    const resourceOptions = [['', 'Vacía'], ...Object.entries(RESOURCE_TYPES).map(([type, meta]) => [type, meta.label])];
+    const capacity = Math.max(1, Math.floor(Number(state.config.hopperCapacity) || 1));
+    state.hoppers.forEach((item, index) => {
+      const block = document.createElement('div');
+      block.className = 'dev-subsection';
+      const resource = item.resourceType ? RESOURCE_TYPES[item.resourceType].label : 'Vacía';
+      block.innerHTML = `<h3>Tolva ${index + 1} · [${item.x},${item.y}]</h3><p class="dev-subsection-note">${resource} · ${Math.floor(item.amount)} / ${capacity}</p>`;
+      block.append(
+        selectControl('Recurso', item.resourceType || '', resourceOptions, (value) => state.setHopperResourceType(item.id, value)),
+        numberControl('Contenido', item.amount, 0, capacity, 1, (value) => state.setHopperAmount(item.id, value)),
+        actionButton('LLENAR A CAPACIDAD', () => state.fillHopper(item.id)),
+        actionButton('VACIAR', () => state.emptyHopper(item.id)),
+        actionButton('RECOGER AL INVENTARIO', () => state.collectHopper(item.id)),
+        actionButton('RETIRAR TOLVA', () => state.removeHopper(item.id)),
+      );
+      active.append(block);
+    });
+    host.append(active);
+  };
+
   const renderGraphics = () => {
     const graphicsEnvironment = document.createElement('section');
     graphicsEnvironment.className = 'dev-section';
     graphicsEnvironment.innerHTML = '<h2>Entorno gráfico</h2>';
 
-    const resetGraphics = actionButton(
-      'RESTAURAR VALORES GRÁFICOS',
-      () => state.resetGraphicsToDefaults(),
-      'Restaura únicamente la configuración visual al preset inicial sin modificar simulación, inventario, depósitos ni máquinas.',
-    );
-
-    graphicsEnvironment.append(
-      resetGraphics,
-      numberControl('Brillo retícula', state.config.gridGlow, 0.05, 1, 0.05, (value) => state.setConfig('gridGlow', value)),
-    );
+    const resetGraphics = actionButton('RESTAURAR VALORES GRÁFICOS', () => state.resetGraphicsToDefaults(), 'Restaura únicamente la configuración visual sin modificar simulación, inventario, yacimientos, máquinas ni logística.');
+    graphicsEnvironment.append(resetGraphics, numberControl('Brillo retícula', state.config.gridGlow, 0.05, 1, 0.05, (value) => state.setConfig('gridGlow', value)));
 
     const extractionFx = document.createElement('div');
     extractionFx.className = 'dev-subsection';
-    extractionFx.innerHTML = '<h3>Efectos de extracción</h3><p class="dev-subsection-note">Feedback visual sincronizado con cada unidad extraída, manual o automáticamente.</p>';
+    extractionFx.innerHTML = '<h3>Efectos de extracción</h3>';
     extractionFx.append(
       toggleControl('Activar pulso', state.config.pulseEnabled, (value) => state.setConfig('pulseEnabled', value)),
       numberControl('Cantidad de anillos', state.config.pulseRingCount, 1, 6, 1, (value) => state.setConfig('pulseRingCount', value)),
@@ -341,12 +401,7 @@ export function mountDevPanel(state, host) {
       numberControl('Intensidad glow', state.config.pulseGlowIntensity, 0, 1, 0.01, (value) => state.setConfig('pulseGlowIntensity', value)),
       colorControl('Color del anillo', state.config.pulseColor, (value) => state.setConfig('pulseColor', value)),
       colorControl('Color del glow', state.config.pulseGlowColor, (value) => state.setConfig('pulseGlowColor', value)),
-      selectControl('Curva de contracción', state.config.pulseEasing, [
-        ['linear', 'Lineal'],
-        ['easeIn', 'Ease In'],
-        ['easeOut', 'Ease Out'],
-        ['easeInOut', 'Ease In-Out'],
-      ], (value) => state.setConfig('pulseEasing', value)),
+      selectControl('Curva de contracción', state.config.pulseEasing, [['linear', 'Lineal'], ['easeIn', 'Ease In'], ['easeOut', 'Ease Out'], ['easeInOut', 'Ease In-Out']], (value) => state.setConfig('pulseEasing', value)),
       numberControl('Flash de impacto', state.config.pulseImpactFlash, 0, 1, 0.01, (value) => state.setConfig('pulseImpactFlash', value)),
       numberControl('Fade de impacto (ms)', state.config.pulseFadeMs, 0, 1000, 10, (value) => state.setConfig('pulseFadeMs', value)),
       numberControl('Multiplicador temporal', state.config.pulseTimeScale, 0.1, 3, 0.05, (value) => state.setConfig('pulseTimeScale', value)),
@@ -354,7 +409,7 @@ export function mountDevPanel(state, host) {
 
     const extractorFx = document.createElement('div');
     extractorFx.className = 'dev-subsection';
-    extractorFx.innerHTML = '<h3>Extractores</h3><p class="dev-subsection-note">Apariencia de las máquinas de combustión instaladas sobre depósitos.</p>';
+    extractorFx.innerHTML = '<h3>Extractores</h3>';
     extractorFx.append(
       numberControl('Escala visual × celda', state.config.extractorVisualScale, 0.3, 1.2, 0.01, (value) => state.setConfig('extractorVisualScale', value)),
       numberControl('Velocidad engranaje', state.config.extractorGearSpeed, 0, 5, 0.05, (value) => state.setConfig('extractorGearSpeed', value)),
@@ -365,13 +420,23 @@ export function mountDevPanel(state, host) {
       colorControl('Color glow extractor', state.config.extractorGlowColor, (value) => state.setConfig('extractorGlowColor', value)),
     );
 
-    graphicsEnvironment.append(extractionFx, extractorFx);
+    const hopperFx = document.createElement('div');
+    hopperFx.className = 'dev-subsection';
+    hopperFx.innerHTML = '<h3>Logística · Tolva Mk.I</h3><p class="dev-subsection-note">Apariencia del almacenamiento local y su indicador de llenado.</p>';
+    hopperFx.append(
+      numberControl('Escala visual × celda', state.config.hopperVisualScale, 0.3, 1.1, 0.01, (value) => state.setConfig('hopperVisualScale', value)),
+      numberControl('Intensidad glow de llenado', state.config.hopperGlowIntensity, 0, 1, 0.01, (value) => state.setConfig('hopperGlowIntensity', value)),
+      colorControl('Color cuerpo tolva', state.config.hopperBodyColor, (value) => state.setConfig('hopperBodyColor', value)),
+      colorControl('Color latón tolva', state.config.hopperBrassColor, (value) => state.setConfig('hopperBrassColor', value)),
+      colorControl('Color indicador de llenado', state.config.hopperFillColor, (value) => state.setConfig('hopperFillColor', value)),
+    );
+
+    graphicsEnvironment.append(extractionFx, extractorFx, hopperFx);
     host.append(graphicsEnvironment);
   };
 
   const render = () => {
     host.replaceChildren();
-
     const title = document.createElement('div');
     title.className = 'panel-title';
     title.innerHTML = '<small>FORGE CONTROL</small><h1>DEV PANEL</h1><p>Control total de simulación y presentación durante desarrollo</p>';
@@ -383,17 +448,15 @@ export function mountDevPanel(state, host) {
     tabs.append(
       tabButton('General', 'general', activeTab, (nextTab) => { activeTab = nextTab; render(); }),
       tabButton('Máquinas', 'machines', activeTab, (nextTab) => { activeTab = nextTab; render(); }),
+      tabButton('Logística', 'logistics', activeTab, (nextTab) => { activeTab = nextTab; render(); }),
       tabButton('Gráficos', 'graphics', activeTab, (nextTab) => { activeTab = nextTab; render(); }),
     );
     host.append(tabs);
 
-    host.append(actionButton(
-      'RESTAURAR VALORES INICIALES',
-      () => state.resetToDefaults(),
-      'Restaura todo el juego al perfil original bloqueado: configuración, inventario, depósitos, máquinas y sistemas futuros incluidos en el preset global.',
-    ));
+    host.append(actionButton('RESTAURAR VALORES INICIALES', () => state.resetToDefaults(), 'Restaura todo el juego al perfil original bloqueado: configuración, inventario, yacimientos, máquinas, logística y sistemas futuros incluidos en el preset global.'));
 
     if (activeTab === 'graphics') renderGraphics();
+    else if (activeTab === 'logistics') renderLogistics();
     else if (activeTab === 'machines') renderMachines();
     else renderGeneral();
   };

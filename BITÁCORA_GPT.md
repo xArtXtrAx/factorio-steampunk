@@ -20,226 +20,258 @@ El DEV Panel es una herramienta de experimentación y diagnóstico; no es la int
 | Campo | Valor |
 |---|---|
 | Proyecto | `factorio-steampunk` |
-| Fase integrada | `v0.2 — Extractor Mk.I + economía + perfiles de arranque DEV` |
-| Dirección siguiente acordada | `v0.3 — yacimientos multicelda y logística básica, afinada por subfases` |
+| Fase activa | `v0.3 — Yacimientos multicelda y logística básica` |
+| Subfase activa | `2 — almacenamiento local / Tolva Mk.I` |
 | Rama estable | `main` |
-| Rama activa | `main` |
-| Integración | `PR #2 fusionado` |
-| Merge v0.2 | `5e13885a061a17e616f44496c72f1ce215700ba3` |
-| Estado del build | `build específico del checkpoint final v0.2 todavía pendiente de confirmación` |
-| Estado de pruebas | `apariencia del extractor validada positivamente; regresión sistemática final de v0.2 sigue pendiente` |
-| Bugs abiertos relevantes | `BUG-LOCAL-001 — corrección implementada, validación manual pendiente` |
+| Rama activa | `agent/yacimientos-v0-3` |
+| PR activo | `#3 — Implementa yacimientos multicelda v0.3 (draft, ampliado a logística local)` |
+| Último checkpoint | `Tolva Mk.I, salida local de extractores y DEV Logística implementados remotamente` |
+| Estado del build | `pendiente en checkout local` |
+| Estado de pruebas | `yacimientos: aprobación visual positiva del usuario; recorrido sistemático pendiente. Tolva: revisión estructural remota, validación manual pendiente` |
+| Bugs abiertos heredados | `BUG-LOCAL-001 — corrección implementada, validación manual pendiente` |
 | Cambios locales sin publicar | `ninguno conocido` |
-| Última actualización | `2026-08-07` |
+| Última actualización | `2026-08-08` |
 
 ## Próximo paso exacto
 
-**Diseñar y acordar la primera subfase de v0.3: yacimientos multicelda y múltiples yacimientos por recurso.** No implementar todavía tolvas, carritos ni transporte. Primero definir el contrato espacial, sus parámetros DEV y la compatibilidad con minería, extractores, perfiles y regeneración. Una vez acordado ese alcance, crear una rama nueva desde `main`.
+Actualizar el checkout local a `agent/yacimientos-v0-3`, ejecutar `npm run build` y abrir con `npm run dev`. Validar primero una cadena mínima `Extractor → Tolva`: comprar/crear una tolva, colocarla en una celda vacía ortogonalmente adyacente al extractor, confirmar que recibe producción, que acepta un solo tipo, que el extractor pasa a `salida bloqueada` al llenarse y que hacer click sobre la tolva recoge su contenido al inventario. Después variar capacidad, costos, fallback global, bloqueo y parámetros gráficos desde `DEV > Logística` / `Gráficos`.
 
-Antes o al comienzo de esa rama, ejecutar `npm run build` sobre el `main` integrado y hacer una regresión corta de v0.2 para saldar la deuda de validación documentada.
+No avanzar todavía al Carrito logístico Mk.I hasta estabilizar este contrato.
 
-## Dirección de diseño v0.3 — territorio industrial y logística
+## Subfase 2 — Tolva Mk.I y almacenamiento local
 
-Objetivo general: hacer que **espacio, distancia y distribución de recursos importen**. El tablero debe dejar de ser cuatro nodos aislados y empezar a comportarse como un territorio industrial que obliga a decidir dónde extraer, almacenar y mover materiales.
-
-La dirección está acordada como plan evolutivo, no como especificación cerrada. Cada subfase se discute y afina antes de implementar.
-
-### Subfase 1 — Yacimientos multicelda
-
-Primer paso propuesto y acordado para discusión:
-
-- sustituir el modelo conceptual `un recurso = una casilla` por **yacimientos formados por varias celdas contiguas**;
-- permitir **más de un yacimiento del mismo recurso** en el mapa;
-- mantener reserva propia por celda;
-- conservar la posibilidad de colocar un Extractor Mk.I sobre una celda válida del yacimiento;
-- permitir que varios extractores trabajen distintas celdas del mismo yacimiento;
-- mantener minería manual por celda;
-- regeneración, resize de retícula y perfiles temporales deben conservar contratos coherentes.
-
-Parámetros previstos para DEV desde el inicio:
-
-- cantidad de yacimientos por recurso;
-- tamaño mínimo y máximo del yacimiento en celdas;
-- reserva base/media por celda;
-- dispersión o irregularidad de la forma;
-- distancia/radio de aparición respecto al centro;
-- opción experimental futura de riqueza variable dentro del yacimiento (bordes pobres / centro rico), inicialmente como toggle DEV si se implementa.
-
-La UI DEV debe permitir inspeccionar las celdas activas y sus reservas sin confundirlas con el inventario del jugador.
-
-### Subfase 2 — Almacenamiento local
-
-Después de estabilizar los yacimientos:
-
-- introducir una `Tolva/Cajón Mk.I` 1×1;
-- capacidad limitada y configurable;
-- separar progresivamente producción automática del inventario global;
-- permitir que una máquina entregue a almacenamiento local o, temporalmente, mantener salida global como modo de compatibilidad/DEV.
-
-Parámetros previstos en DEV: capacidad, reglas de aceptación, costo, comportamiento de salida del extractor y cualquier radio de interacción que se adopte.
-
-### Subfase 3 — Transporte físico básico
-
-Primer candidato: **Carrito logístico Mk.I** o porteador mecánico.
-
-Concepto inicial:
-
-- origen y destino explícitos;
-- capacidad limitada;
-- velocidad por celdas;
-- tiempo de carga/descarga;
-- viaje visible entre nodos;
-- la distancia afecta throughput real.
-
-Parámetros previstos en DEV: capacidad, velocidad, tiempos de carga/descarga, costo y límites de rutas.
-
-### Evolución posterior prevista
-
-Sin compromiso de orden definitivo:
-
-- transportadores mecánicos/cadenas para flujo continuo;
-- ferrocarril o vagonetas para largas distancias;
-- fundición y materiales procesados;
-- edificios de distintos tamaños (`1×1`, `2×2`, `3×3`, etc.);
-- terreno básico (suelo, roca, agua);
-- vapor como primera red energética temática;
-- posible separación futura entre potencia mecánica y electricidad.
-
-### Principio logístico
-
-La progresión deseada es aproximadamente:
-
-`extracción → almacenamiento local → transporte → almacenamiento/consumo industrial → procesamiento`
-
-El carbón debe evolucionar de combustible abstracto a recurso logístico real capaz de sostener extractores, hornos, calderas y futuras redes energéticas.
-
-## v0.2 integrada
-
-### Extractor de combustión Mk.I
-
-Preset vigente:
+### Preset inicial acordado
 
 - tamaño: `1×1`;
-- producción: `1 recurso/s`;
-- eficiencia: `10 recursos / carbón`;
-- buffer de carbón: `5`;
-- auto-carga desde inventario: activa;
-- autoalimentación sobre carbón: activa;
-- costo: `20 hierro + 10 cobre + 10 piedra + 0 carbón`;
-- stock inicial: `0`.
+- capacidad: `50` recursos;
+- tipos simultáneos: `1`;
+- entrada desde extractor: adyacencia ortogonal, distancia cardinal `1`;
+- costo: `10 hierro + 5 cobre + 5 piedra + 0 carbón`;
+- stock inicial: `0`;
+- salida global del extractor cuando no existe tolva adyacente: activa como compatibilidad temporal;
+- si existe salida local adyacente pero no puede aceptar el recurso: el extractor se bloquea por defecto;
+- el jugador puede recoger manualmente el contenido haciendo click sobre la tolva.
 
-Contrato económico:
+### Contrato de propiedad
 
-- comprar descuenta materiales y suma una máquina al stock;
-- colocar consume una máquina del stock;
-- retirar devuelve la máquina al stock, sin reembolsar materiales;
-- regenerar depósitos recupera máquinas instaladas al stock antes de reemplazar los depósitos.
+- comprar una Tolva Mk.I descuenta materiales y suma `1` a `hopperStock`;
+- colocar consume una unidad del stock y requiere una celda vacía, sin depósito ni otra tolva;
+- retirar devuelve la tolva al stock y transfiere su contenido al inventario para no destruir recursos;
+- retirar todas hace lo mismo para cada tolva;
+- el reset global elimina tolvas/stock/contenido y vuelve al preset original;
+- regenerar yacimientos devuelve las tolvas instaladas al stock. La conservación explícita de contenido durante regeneración debe comprobarse en la validación manual antes de considerar cerrado el contrato.
 
-La apariencia minimalista del extractor fue validada positivamente por el usuario: cuerpo oscuro/latón, rotor central, glow cian, aro de combustible e integración con el pulso de extracción.
+### Salida del Extractor Mk.I
 
-### Panel de jugador
+La producción automática ya no está obligada a teletransportarse siempre al inventario global.
 
-`TALLER DE CAMPO — Extractores Mk.I` vive dentro del área de juego y permanece separado del DEV Panel. Permite comprar extractores, ver disponibles e instalados, iniciar/cancelar colocación y consultar recurso, coordenadas y estado de cada máquina instalada.
+Prioridad actual:
 
-### DEV Panel
+1. buscar Tolvas Mk.I ortogonalmente adyacentes al depósito trabajado;
+2. si existe una tolva vacía o del mismo recurso con capacidad disponible, transferir allí la producción;
+3. si existe salida local pero ninguna puede aceptar y `hopperBlocksExtractorWhenFull` está activo, estado `salida bloqueada` y no se extrae/consume trabajo para esa unidad;
+4. si no existe tolva adyacente y `extractorGlobalOutputFallback` está activo, conservar el comportamiento legado y enviar al inventario global;
+5. ambos comportamientos se pueden experimentar desde DEV.
 
-Pestañas vigentes:
+Una tolva fija su tipo con el primer recurso recibido y no mezcla recursos en esta subfase.
 
-- `General`: perfiles de arranque, retícula, simulación manual, inventario y depósitos activos;
-- `Máquinas`: producción, eficiencia, combustible, costos, stock y manipulación de extractores;
-- `Gráficos`: entorno, FX de extracción y tuning visual del extractor.
+### DEV > Logística
 
-`DEV > General > Inventario` representa recursos que posee el jugador. `Depósitos activos` representa la reserva restante de cada casilla del mapa; ambos conceptos se mantienen separados.
+Nueva pestaña contextual `Logística`.
 
-Los sliders aplican cambios continuamente. Los campos numéricos permiten escribir cifras completas y confirman al terminar (`change`/Enter), evitando pérdida de foco.
+Controles de Tolva Mk.I:
 
-El inventario manual usa mínimo `0` y `inventoryEditMax` como máximo. El preset original de `inventoryEditMax` es `100000` y puede ajustarse desde DEV hasta `1000000`.
+- capacidad;
+- costo hierro/cobre/piedra/carbón;
+- stock disponible;
+- `Salida global si no hay tolva`;
+- `Bloquear extractor si salida local no acepta`;
+- colocar/cancelar colocación;
+- retirar todas.
 
-### Perfiles de arranque DEV
+Inspección/manipulación por tolva:
 
-- `Original · bloqueado`: definido por `DEFAULT_CONFIG` + `resetToDefaults()`, nunca se serializa ni puede sobrescribirse.
-- `Temporal 1–3`: tres slots persistentes y sobrescribibles mediante `localStorage`.
-- Los snapshots guardan configuración, inventario, depósitos/posiciones, stock y máquinas instaladas.
-- Al cargar se eliminan estados transitorios como minería activa, colocación y último evento de extracción.
-- Esta persistencia es exclusivamente DEV y no constituye el futuro sistema de saves del jugador.
+- coordenadas;
+- recurso actual;
+- contenido/capacidad;
+- cambiar recurso cuando sea compatible;
+- fijar contenido;
+- llenar a capacidad;
+- vaciar;
+- recoger al inventario;
+- retirar.
 
-Referencia: `docs/decisiones/ADR-002-perfiles-dev-localstorage.md`.
+### Gráficos > Logística · Tolva Mk.I
 
-## Contratos de estado vigentes
+Tuning visual añadido desde el primer checkpoint:
 
-- `DEFAULT_CONFIG` es la fuente de verdad del arranque canónico global.
-- `DEFAULT_GRAPHICS_CONFIG` es la fuente del preset visual.
-- `resetToDefaults()` define el perfil original bloqueado y debe incorporar futuros sistemas.
-- `resetGraphicsToDefaults()` sólo modifica presentación/FX.
-- `captureStartProfile()` serializa el estado estable de un comienzo experimental.
-- `restoreStartProfile()` valida/normaliza snapshots y limpia estados transitorios.
-- IDs de depósitos se regeneran al recrear mapa; las máquinas deben tratar esas referencias con cuidado.
+- escala visual;
+- intensidad del glow de llenado;
+- color del cuerpo;
+- color de latón;
+- color del indicador de llenado.
+
+La representación inicial es procedural y minimalista: contenedor oscuro/latón con indicador vertical de llenado y punto de color del recurso almacenado.
+
+### Perfiles DEV
+
+`captureStartProfile()` incorpora:
+
+- `hoppers` con posición, tipo y cantidad;
+- `hopperStock`;
+- toda la configuración logística y gráfica nueva entra automáticamente mediante `config`.
+
+Perfiles antiguos sin tolvas siguen cargando con `hoppers=[]` y `hopperStock=0`. El almacenamiento local normaliza `resourceType` de tolvas vacías para evitar incompatibilidades al serializar/restaurar.
+
+## Subfase 1 — Yacimientos multicelda
+
+### Preset inicial acordado
+
+- `2` yacimientos por tipo de recurso;
+- `3–7` celdas por yacimiento;
+- `100` unidades por celda;
+- formas contiguas ortogonalmente;
+- irregularidad inicial `0.7`;
+- no se permiten dos recursos en la misma celda;
+- recursos distintos sí pueden quedar adyacentes;
+- riqueza variable centro/borde **no implementada todavía**;
+- Extractor Mk.I sigue ocupando `1×1` y trabaja una celda concreta.
+
+Cada celda sigue siendo un depósito real con reserva propia y agrupación conceptual mediante `veinId`:
+
+```js
+{
+  id,
+  veinId,
+  type,
+  x,
+  y,
+  amount,
+}
+```
+
+Los perfiles antiguos sin `veinId` siguen siendo restaurables mediante identificadores de yacimiento compatibles al cargar.
+
+### DEV > General > Generación de recursos
+
+- yacimientos por recurso;
+- tamaño mínimo/máximo;
+- reserva por celda;
+- radio aparición;
+- irregularidad;
+- regeneración explícita.
+
+`Yacimientos activos` agrupa por `veinId` y permite editar cada celda.
+
+El usuario reportó el 2026-08-08 que la generación multicelda **“se ve genial”** durante prueba manual. Esto se registra como aprobación visual positiva, no como sustituto del build ni del recorrido sistemático de contigüidad, extremos, resize y perfiles.
+
+## Dirección de diseño v0.3
+
+Objetivo general: hacer que **espacio, distancia y distribución de recursos importen**.
+
+Secuencia acordada:
+
+1. **Yacimientos multicelda** — implementados, validación sistemática pendiente.
+2. **Almacenamiento local / Tolva Mk.I** — implementado en checkpoint actual, validación pendiente.
+3. **Transporte físico básico / Carrito logístico Mk.I** — siguiente candidato, aún no implementar.
+4. Evolución posterior: almacenes mayores, transportadores mecánicos, vagonetas/ferrocarril, fundición, edificios mayores, terreno y vapor/energía.
+
+## v0.2 integrada — base heredada
+
+- Extractor Mk.I `1×1`.
+- Producción `1 recurso/s`.
+- Eficiencia `10 recursos/carbón`.
+- Buffer `5`.
+- Costo `20 hierro + 10 cobre + 10 piedra`.
+- Compra → stock → colocación; retirada devuelve máquina al stock.
+- Panel jugador `TALLER DE CAMPO`.
+- Inventario del jugador separado de reservas del mapa.
+- Perfil original bloqueado + 3 perfiles temporales persistentes mediante `localStorage`.
+- ADR-002 mantiene la persistencia DEV separada del futuro sistema de guardado.
+
+Merge v0.2: `5e13885a061a17e616f44496c72f1ce215700ba3`.
 
 ## Decisiones activas
 
 | ID | Decisión | Motivo |
 |---|---|---|
-| `ADR-001` | PixiJS + Vite y separación simulación/render/UI | Rendimiento 2D y expansión modular |
-| `ADR-002` | Tres perfiles DEV en `localStorage`, original fuera de persistencia | Experimentación persistente sin convertir DEV en sistema de saves |
+| `ADR-001` | PixiJS + Vite y separación simulación/render/UI | Base modular 2D |
+| `ADR-002` | Tres perfiles DEV en `localStorage`, original fuera de persistencia | Experimentación sin convertir DEV en saves |
 | `DEV-001` | Toda mecánica nueva expone parámetros relevantes en DEV desde su implementación | Tuning antes de fijar balance |
-| `UI-002` | Sliders continuos; campos numéricos confirman al terminar | Fluidez y edición textual sin pérdida de foco |
-| `MACHINE-001` | Extractor Mk.I 1×1 ligado a depósito | Legibilidad espacial |
-| `FUEL-001` | Combustible expresado en recursos por carbón | Relación fácil de entender y tunear |
-| `ECON-001` | Extractor cuesta 20 hierro + 10 cobre + 10 piedra | Fase manual breve antes de automatizar |
-| `ECON-002` | Compra crea stock; colocación consume stock; retirada recupera máquina | Separar propiedad y ubicación física |
-| `UI-003` | Panel jugador separado del DEV Panel | Gameplay real distinto de herramientas de tuning |
-| `STATE-001` | Reset global evoluciona con todos los sistemas | Retorno reproducible al arranque canónico |
-| `ROADMAP-003` | v0.3 prioriza yacimientos multicelda antes de logística física | La logística requiere primero un mundo donde espacio y distancia importen |
+| `MACHINE-001` | Extractor Mk.I 1×1 ligado a una celda de depósito | Legibilidad espacial |
+| `ROADMAP-003` | v0.3 prioriza territorio → almacenamiento → transporte | La logística necesita distancia y buffers reales |
+| `RESOURCE-003` | Cada celda conserva depósito propio y se agrupa por `veinId` | Compatibilidad con minería/extractores y futura logística |
+| `LOGISTICS-003` | Tolva Mk.I es buffer local 1×1 de un solo recurso y prioridad de salida del extractor | Introducir saturación y ubicación antes del transporte móvil |
+| `UI-004` | Logística obtiene pestaña DEV propia | El dominio ya tiene balance, estados, manipulación y futuros vehículos suficientes para justificar contexto independiente |
 
-## Deuda de validación heredada de v0.2
+## Deuda de validación
 
-- Ejecutar `npm run build` sobre el `main` integrado.
-- Recorrer `BUG-LOCAL-001`: varias cifras, Enter/blur, negativos y máximo configurable.
-- Guardar/cargar/sobrescribir los tres perfiles y verificar persistencia tras recarga.
-- Probar compra con inventario insuficiente, exacto y excedente.
-- Probar compra → stock → colocación → retirada → recolocación.
-- Validar autoalimentación sobre carbón y consumo `1 carbón → 10 recursos`.
-- Verificar panel de jugador en retículas 8×8, 30×30 y 60×60.
+### v0.3 · Tolva
+
+- [ ] `npm run build` sobre el checkpoint actual.
+- [ ] Comprar Tolva Mk.I con inventario insuficiente/exacto/excedente.
+- [ ] Colocar sólo sobre celda vacía; rechazar depósito y otra tolva.
+- [ ] Confirmar `Extractor → Tolva` ortogonal; diagonal no debe contar.
+- [ ] Confirmar un solo tipo por tolva.
+- [ ] Llenar a `50` y comprobar estado `salida bloqueada`.
+- [ ] Recoger por click y confirmar reanudación del extractor.
+- [ ] Desactivar fallback global y comprobar bloqueo sin tolva.
+- [ ] Desactivar bloqueo local y confirmar fallback según contrato actual.
+- [ ] Probar capacidad/costos/stock/manipulación desde `DEV > Logística`.
+- [ ] Probar tuning en `Gráficos > Logística · Tolva Mk.I`.
+- [ ] Guardar/cargar perfil temporal con tolvas vacías y llenas.
+- [ ] Probar resize con tolvas instaladas.
+- [ ] Probar regeneración de yacimientos con tolvas instaladas y verificar tratamiento de contenido/stock.
+
+### v0.3 · Yacimientos
+
+- [ ] Validar 8 yacimientos esperados en preset base.
+- [ ] Validar tamaños 3–7 y contigüidad.
+- [ ] Validar ausencia de solapamiento.
+- [ ] Probar valores DEV extremos y regeneración.
+- [ ] Probar minería y varios extractores sobre un mismo yacimiento.
+- [ ] Probar resize 8×8, 30×30 y 60×60.
+- [ ] Guardar/cargar perfiles con `veinId`.
+
+### heredada de v0.2
+
+- [ ] Recorrer `BUG-LOCAL-001`.
+- [ ] Recorrer perfiles temporales persistentes/sobrescritura.
+- [ ] Validar loop económico completo y autoalimentación del extractor.
 
 ## Historial de hitos
 
+### 2026-08-08 — Subfase 2: Tolva Mk.I
+
+- Usuario aprobó avanzar con almacenamiento local tras probar visualmente los yacimientos.
+- Añadidos balance, costo, stock, compra/colocación/retirada y estado persistente de Tolva Mk.I.
+- Añadida prioridad de salida local para extractores y estado `salida bloqueada`.
+- Añadida recolección manual de tolva al inventario mediante click.
+- Añadida pestaña `DEV > Logística` con control completo y manipulación por entidad.
+- Añadido tuning visual en `Gráficos`.
+- Perfiles temporales ampliados con tolvas y stock.
+- Revisión estructural remota realizada; build y validación manual pendientes.
+
+### 2026-08-08 — Prueba visual de yacimientos
+
+- El usuario indicó durante prueba manual que los yacimientos multicelda “se ven genial”.
+- Se conserva pendiente la validación sistemática funcional y de extremos.
+
+### 2026-08-07 — Inicio implementación v0.3
+
+- Creada rama `agent/yacimientos-v0-3` desde `main`.
+- Añadidos yacimientos multicelda, `veinId` y controles DEV de generación.
+
 ### 2026-08-07 — Dirección v0.3 acordada
 
-- Acordada evolución hacia yacimientos multicelda y múltiples yacimientos por recurso.
-- Acordado que el primer paso de v0.3 será resolver el modelo espacial antes de almacenamiento o transporte.
-- Registrada hoja de ruta: yacimientos → almacenamiento local → carrito logístico → sistemas posteriores.
-- Reforzado `DEV-001`: toda mecánica y presentación nueva nace con controles DEV relevantes y contextuales.
+- Acordada hoja de ruta `yacimientos → almacenamiento → carrito logístico → sistemas posteriores`.
+- Reforzado `DEV-001` para toda nueva implementación.
 
 ### 2026-08-07 — Integración v0.2
 
-- PR #2 `Implementa extractor de combustión Mk.I` fusionado a `main`.
-- Merge: `5e13885a061a17e616f44496c72f1ce215700ba3`.
-- La integración fue autorizada explícitamente aun con deuda de validación final.
-- Rama activa volvió a `main`.
-
-### 2026-08-07 — Edición numérica e inventario DEV
-
-- Registrado `BUG-LOCAL-001`.
-- Sliders quedaron continuos; campos numéricos confirman al terminar.
-- Añadido bloqueo/normalización de negativos y `inventoryEditMax`.
-
-### 2026-08-07 — Perfiles de arranque DEV
-
-- Añadido perfil original bloqueado y tres temporales persistentes/sobrescribibles.
-- Persistencia aislada en `localStorage` y documentada en ADR-002.
-
-### 2026-08-07 — Economía y panel del extractor
-
-- Acordado costo base `20 hierro + 10 cobre + 10 piedra`.
-- Añadidos compra, stock, colocación/retirada y `TALLER DE CAMPO`.
-- Apariencia minimalista validada positivamente por el usuario.
-
-### 2026-08-07 — Inicio v0.2
-
-- Añadido Extractor Mk.I con producción automática, combustible, auto-carga y autoalimentación.
-- Formalizado `DEV-001`.
+- PR #2 fusionado a `main`.
+- Apariencia minimalista del extractor validada positivamente.
 
 ### 2026-08-07 — Integración v0.1
 
 - PR #1 fusionado a `main`, merge `fe55692aa95adea043c19d8f1f8b121003c5c1d9`.
-- v0.1 estableció minería manual, retícula, HUD, DEV Panel, FX y resets.

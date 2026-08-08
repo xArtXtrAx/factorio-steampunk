@@ -1,7 +1,6 @@
 import { RESOURCE_TYPES } from '../game/config.js';
 
-function resourceCostLabel(state) {
-  const cost = state.getExtractorCost();
+function costLabel(cost) {
   return [
     ['iron', cost.iron],
     ['copper', cost.copper],
@@ -19,73 +18,118 @@ export function mountPlayerPanel(state, host) {
 
     const heading = document.createElement('div');
     heading.className = 'machine-panel-heading';
-    heading.innerHTML = '<small>TALLER DE CAMPO</small><strong>Extractores Mk.I</strong>';
+    heading.innerHTML = '<small>TALLER DE CAMPO</small><strong>Automatización Mk.I</strong>';
 
     const summary = document.createElement('div');
     summary.className = 'machine-panel-summary';
     summary.innerHTML = `
-      <span>Disponibles <strong>${state.extractorStock}</strong></span>
-      <span>Instalados <strong>${state.extractors.length}</strong></span>
+      <span>Extractores <strong>${state.extractorStock}</strong> / ${state.extractors.length}</span>
+      <span>Tolvas <strong>${state.hopperStock}</strong> / ${state.hoppers.length}</span>
     `;
 
-    const buy = document.createElement('button');
-    buy.type = 'button';
-    buy.className = 'machine-panel-button';
-    buy.disabled = !state.canAffordExtractor();
-    buy.innerHTML = `<span>COMPRAR EXTRACTOR</span><small>${resourceCostLabel(state)}</small>`;
-    buy.addEventListener('click', () => state.buyExtractor());
+    const extractorLabel = document.createElement('span');
+    extractorLabel.className = 'machine-panel-label';
+    extractorLabel.textContent = 'Extractor de combustión Mk.I';
 
-    const place = document.createElement('button');
-    place.type = 'button';
-    place.className = `machine-panel-button machine-panel-button-secondary${state.placementMode === 'burnerExtractor' ? ' is-active' : ''}`;
-    place.disabled = state.extractorStock <= 0 && state.placementMode !== 'burnerExtractor';
-    place.textContent = state.placementMode === 'burnerExtractor'
+    const buyExtractor = document.createElement('button');
+    buyExtractor.type = 'button';
+    buyExtractor.className = 'machine-panel-button';
+    buyExtractor.disabled = !state.canAffordExtractor();
+    buyExtractor.innerHTML = `<span>COMPRAR EXTRACTOR</span><small>${costLabel(state.getExtractorCost())}</small>`;
+    buyExtractor.addEventListener('click', () => state.buyExtractor());
+
+    const placeExtractor = document.createElement('button');
+    placeExtractor.type = 'button';
+    placeExtractor.className = `machine-panel-button machine-panel-button-secondary${state.placementMode === 'burnerExtractor' ? ' is-active' : ''}`;
+    placeExtractor.disabled = state.extractorStock <= 0 && state.placementMode !== 'burnerExtractor';
+    placeExtractor.textContent = state.placementMode === 'burnerExtractor'
       ? 'CANCELAR COLOCACIÓN'
-      : `COLOCAR DISPONIBLE (${state.extractorStock})`;
-    place.addEventListener('click', () => {
+      : `COLOCAR EXTRACTOR (${state.extractorStock})`;
+    placeExtractor.addEventListener('click', () => {
       if (state.placementMode === 'burnerExtractor') state.cancelPlacement();
       else state.beginExtractorPlacement();
+    });
+
+    const hopperLabel = document.createElement('span');
+    hopperLabel.className = 'machine-panel-label';
+    hopperLabel.textContent = 'Tolva Mk.I';
+
+    const buyHopper = document.createElement('button');
+    buyHopper.type = 'button';
+    buyHopper.className = 'machine-panel-button';
+    buyHopper.disabled = !state.canAffordHopper();
+    buyHopper.innerHTML = `<span>COMPRAR TOLVA</span><small>${costLabel(state.getHopperCost())}</small>`;
+    buyHopper.addEventListener('click', () => state.buyHopper());
+
+    const placeHopper = document.createElement('button');
+    placeHopper.type = 'button';
+    placeHopper.className = `machine-panel-button machine-panel-button-secondary${state.placementMode === 'storageHopper' ? ' is-active' : ''}`;
+    placeHopper.disabled = state.hopperStock <= 0 && state.placementMode !== 'storageHopper';
+    placeHopper.textContent = state.placementMode === 'storageHopper'
+      ? 'CANCELAR COLOCACIÓN'
+      : `COLOCAR TOLVA (${state.hopperStock})`;
+    placeHopper.addEventListener('click', () => {
+      if (state.placementMode === 'storageHopper') state.cancelPlacement();
+      else state.beginHopperPlacement();
     });
 
     const status = document.createElement('p');
     status.className = 'machine-panel-status';
     if (state.placementMode === 'burnerExtractor') {
-      status.textContent = 'Selecciona un depósito libre en la retícula.';
-    } else if (state.extractorStock > 0) {
-      status.textContent = 'Hay máquinas listas para instalar.';
+      status.textContent = 'Selecciona una celda de recurso libre.';
+    } else if (state.placementMode === 'storageHopper') {
+      status.textContent = 'Selecciona una celda vacía. Una tolva adyacente ortogonalmente recibe la salida del extractor.';
     } else {
-      status.textContent = 'Compra un extractor para comenzar la automatización.';
+      status.textContent = 'Haz click sobre una tolva con contenido para recogerlo al inventario.';
     }
 
     const locations = document.createElement('div');
     locations.className = 'machine-panel-locations';
     const locationsTitle = document.createElement('span');
     locationsTitle.className = 'machine-panel-label';
-    locationsTitle.textContent = 'Ubicaciones';
+    locationsTitle.textContent = 'Instalaciones';
     locations.append(locationsTitle);
 
-    if (!state.extractors.length) {
+    if (!state.extractors.length && !state.hoppers.length) {
       const empty = document.createElement('p');
       empty.className = 'machine-panel-empty';
-      empty.textContent = 'Ningún extractor instalado.';
+      empty.textContent = 'Ninguna instalación construida.';
       locations.append(empty);
     } else {
       const list = document.createElement('ul');
       state.extractors.forEach((extractor, index) => {
         const deposit = state.deposits.find((item) => item.id === extractor.depositId);
         const item = document.createElement('li');
-        if (!deposit) {
-          item.textContent = `#${index + 1} · ubicación desconocida`;
-        } else {
+        if (!deposit) item.textContent = `Extractor #${index + 1} · ubicación desconocida`;
+        else {
           const meta = RESOURCE_TYPES[deposit.type];
-          item.innerHTML = `<strong>#${index + 1} ${meta.label}</strong><span>[${deposit.x}, ${deposit.y}] · ${extractor.status}</span>`;
+          item.innerHTML = `<strong>Extractor #${index + 1} · ${meta.label}</strong><span>[${deposit.x}, ${deposit.y}] · ${extractor.status}</span>`;
         }
+        list.append(item);
+      });
+
+      const capacity = Math.max(1, Math.floor(Number(state.config.hopperCapacity) || 1));
+      state.hoppers.forEach((hopper, index) => {
+        const item = document.createElement('li');
+        const resource = hopper.resourceType ? RESOURCE_TYPES[hopper.resourceType].label : 'Vacía';
+        item.innerHTML = `<strong>Tolva #${index + 1} · ${resource}</strong><span>[${hopper.x}, ${hopper.y}] · ${Math.floor(hopper.amount)} / ${capacity}</span>`;
         list.append(item);
       });
       locations.append(list);
     }
 
-    host.append(heading, summary, buy, place, status, locations);
+    host.append(
+      heading,
+      summary,
+      extractorLabel,
+      buyExtractor,
+      placeExtractor,
+      hopperLabel,
+      buyHopper,
+      placeHopper,
+      status,
+      locations,
+    );
   };
 
   window.addEventListener('game-state-change', render);
