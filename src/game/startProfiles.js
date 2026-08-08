@@ -13,6 +13,19 @@ function getStorage() {
   }
 }
 
+function normalizeSnapshotForStorage(snapshot) {
+  if (!snapshot || typeof snapshot !== 'object') return snapshot;
+  return {
+    ...snapshot,
+    hoppers: Array.isArray(snapshot.hoppers)
+      ? snapshot.hoppers.map((hopper) => ({
+        ...hopper,
+        resourceType: typeof hopper?.resourceType === 'string' ? hopper.resourceType : '',
+      }))
+      : [],
+  };
+}
+
 export function loadTemporaryStartProfiles() {
   const storage = getStorage();
   if (!storage) return emptySlots();
@@ -42,7 +55,7 @@ export function saveTemporaryStartProfile(slotIndex, snapshot) {
     const slots = loadTemporaryStartProfiles();
     slots[slotIndex] = {
       savedAt: new Date().toISOString(),
-      snapshot,
+      snapshot: normalizeSnapshotForStorage(snapshot),
     };
     storage.setItem(STORAGE_KEY, JSON.stringify(slots));
     return true;
@@ -57,10 +70,12 @@ export function summarizeTemporaryStartProfile(entry) {
   const columns = Number(snapshot.config?.gridColumns) || 0;
   const rows = Number(snapshot.config?.gridRows) || 0;
   const inventory = snapshot.inventory || {};
-  const stock = Math.max(0, Math.floor(Number(snapshot.extractorStock) || 0));
-  const installed = Array.isArray(snapshot.extractors) ? snapshot.extractors.length : 0;
+  const extractorStock = Math.max(0, Math.floor(Number(snapshot.extractorStock) || 0));
+  const extractors = Array.isArray(snapshot.extractors) ? snapshot.extractors.length : 0;
+  const hopperStock = Math.max(0, Math.floor(Number(snapshot.hopperStock) || 0));
+  const hoppers = Array.isArray(snapshot.hoppers) ? snapshot.hoppers.length : 0;
   const resourceSummary = ['coal', 'copper', 'iron', 'stone']
     .map((type) => Math.max(0, Math.floor(Number(inventory[type]) || 0)))
     .join(' / ');
-  return `${columns}×${rows} · inv. Cb/Cu/Fe/Pi ${resourceSummary} · ext. ${stock}+${installed}`;
+  return `${columns}×${rows} · inv. Cb/Cu/Fe/Pi ${resourceSummary} · ext. ${extractorStock}+${extractors} · tol. ${hopperStock}+${hoppers}`;
 }
