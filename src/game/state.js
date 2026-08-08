@@ -8,6 +8,17 @@ function clampInt(value, min, max) {
   return Math.max(min, Math.min(max, Math.round(Number(value) || min)));
 }
 
+const CARDINAL_DIRECTIONS = [
+  [1, 0],
+  [-1, 0],
+  [0, 1],
+  [0, -1],
+];
+
+function shuffledDirections() {
+  return [...CARDINAL_DIRECTIONS].sort(() => Math.random() - 0.5);
+}
+
 export class GameState {
   constructor() {
     this.config = { ...DEFAULT_CONFIG };
@@ -59,30 +70,86 @@ export class GameState {
     this.touch();
   }
 
+  findVeinSeed(used, centerX, centerY) {
+    const radius = Math.max(1, Math.floor(Number(this.config.spawnRadius) || 1));
+    const columns = this.config.gridColumns;
+    const rows = this.config.gridRows;
+
+    for (let attempt = 0; attempt < 250; attempt += 1) {
+      const x = Math.max(0, Math.min(columns - 1, centerX + randomInt(-radius, radius)));
+      const y = Math.max(0, Math.min(rows - 1, centerY + randomInt(-radius, radius)));
+      if (!used.has(`${x}:${y}`)) return { x, y };
+    }
+
+    for (let y = 0; y < rows; y += 1) {
+      for (let x = 0; x < columns; x += 1) {
+        if (!used.has(`${x}:${y}`)) return { x, y };
+      }
+    }
+
+    return null;
+  }
+
+  growResourceVein(type, veinIndex, used, centerX, centerY) {
+    const seed = this.findVeinSeed(used, centerX, centerY);
+    if (!seed) return [];
+
+    const minCells = clampInt(this.config.resourceVeinMinCells, 1, 100);
+    const maxCells = clampInt(this.config.resourceVeinMaxCells, minCells, 100);
+    const targetCells = randomInt(minCells, maxCells);
+    const irregularity = Math.max(0, Math.min(1, Number(this.config.resourceVeinIrregularity) || 0));
+    const veinId = `${type}-vein-${veinIndex + 1}-${crypto.randomUUID()}`;
+    const cells = [seed];
+    used.add(`${seed.x}:${seed.y}`);
+
+    let stalledAttempts = 0;
+    while (cells.length < targetCells && stalledAttempts < targetCells * 24) {
+      const useRandomAnchor = Math.random() < irregularity;
+      const anchor = useRandomAnchor
+        ? cells[randomInt(0, cells.length - 1)]
+        : cells[cells.length - 1];
+      let placed = false;
+
+      for (const [dx, dy] of shuffledDirections()) {
+        const x = anchor.x + dx;
+        const y = anchor.y + dy;
+        if (x < 0 || y < 0 || x >= this.config.gridColumns || y >= this.config.gridRows) continue;
+        const key = `${x}:${y}`;
+        if (used.has(key)) continue;
+        used.add(key);
+        cells.push({ x, y });
+        placed = true;
+        break;
+      }
+
+      stalledAttempts = placed ? 0 : stalledAttempts + 1;
+    }
+
+    return cells.map(({ x, y }) => ({
+      id: `${type}-${crypto.randomUUID()}`,
+      veinId,
+      type,
+      x,
+      y,
+      amount: Math.max(1, Number(this.config.initialDepositAmount) || 1),
+    }));
+  }
+
   regenerateDeposits() {
     if (this.extractors.length) this.extractorStock += this.extractors.length;
     const centerX = Math.floor(this.config.gridColumns / 2);
     const centerY = Math.floor(this.config.gridRows / 2);
     const used = new Set();
+    const veinsPerType = clampInt(this.config.resourceVeinsPerType, 1, 12);
+    const nextDeposits = [];
 
-    this.deposits = Object.keys(RESOURCE_TYPES).map((type) => {
-      let x;
-      let y;
-      do {
-        x = Math.max(0, Math.min(this.config.gridColumns - 1, centerX + randomInt(-this.config.spawnRadius, this.config.spawnRadius)));
-        y = Math.max(0, Math.min(this.config.gridRows - 1, centerY + randomInt(-this.config.spawnRadius, this.config.spawnRadius)));
-      } while (used.has(`${x}:${y}`));
-
-      used.add(`${x}:${y}`);
-      return {
-        id: `${type}-${crypto.randomUUID()}`,
-        type,
-        x,
-        y,
-        amount: this.config.initialDepositAmount,
-      };
+    Object.keys(RESOURCE_TYPES).forEach((type) => {
+      for (let veinIndex = 0; veinIndex < veinsPerType; veinIndex += 1) {
+        nextDeposits.push(...this.growResourceVein(type, veinIndex, used, centerX, centerY));
+      }
     });
 
+    this.deposits = nextDeposits;
     this.extractors = [];
     this.placementMode = null;
     this.stopMining();
@@ -154,8 +221,12 @@ export class GameState {
         let id = typeof rawDeposit.id === 'string' && rawDeposit.id ? rawDeposit.id : `${rawDeposit.type}-${crypto.randomUUID()}`;
         if (ids.has(id)) id = `${rawDeposit.type}-${crypto.randomUUID()}`;
         ids.add(id);
+        const veinId = typeof rawDeposit.veinId === 'string' && rawDeposit.veinId
+          ? rawDeposit.veinId
+          : `${rawDeposit.type}-vein-legacy-${id}`;
         return [{
           id,
+          veinId,
           type: rawDeposit.type,
           x,
           y,
