@@ -8,14 +8,14 @@ Este archivo es el punto de entrada permanente para reanudar el proyecto sin dep
 |---|---|
 | Proyecto | `factorio-steampunk` |
 | Rama estable | `main` |
-| Rama activa | `main` |
-| Fase integrada | `v0.2 — Extractor Mk.I + economía + perfiles de arranque DEV` |
-| Dirección siguiente | `v0.3 — yacimientos multicelda y logística básica, por subfases` |
-| Estado | `dirección v0.3 acordada; primera subfase todavía en diseño, sin rama nueva` |
+| Rama activa | `agent/yacimientos-v0-3` |
+| Fase activa | `v0.3 — Yacimientos multicelda y logística básica` |
+| Subfase | `1 — yacimientos multicelda / múltiples yacimientos por recurso` |
+| Estado | `primer checkpoint implementado remotamente; build y validación local pendientes` |
+| Commit remoto de referencia | `64b69ef694a77e48c9c4d9f1eea1789b45a72b06` |
 | Merge v0.2 | `5e13885a061a17e616f44496c72f1ce215700ba3` |
-| Bitácora v0.3 | `79088e92c27f1c465d4f1289481509608e5e9c84` |
-| PR activo | `ninguno` |
-| Validación | `v0.2 integrada con deuda de build/regresión sistemática aún documentada` |
+| PR activo | `pendiente de crear para agent/yacimientos-v0-3` |
+| Validación | `v0.3 sólo revisión estructural remota; v0.2 conserva deuda de regresión sistemática documentada` |
 | Bugs abiertos | `BUG-LOCAL-001 — corrección implementada, validación manual pendiente` |
 | Última actualización | `2026-08-07` |
 
@@ -25,7 +25,7 @@ Este archivo es el punto de entrada permanente para reanudar el proyecto sin dep
 2. Identificar rama activa, commit de referencia y estado de validación.
 3. Leer `AGENTS.md`, `BITÁCORA_GPT.md` y `BUGS.md` desde la rama activa.
 4. Revisar ADR y documentación citada.
-5. Comparar `main` con cualquier rama activa y revisar PR/commits recientes.
+5. Comparar `main` con la rama activa y revisar PR/commits recientes.
 6. Continuar desde **Próximo paso exacto** en `BITÁCORA_GPT.md`.
 
 ## Reglas críticas
@@ -37,33 +37,33 @@ Este archivo es el punto de entrada permanente para reanudar el proyecto sin dep
 - Entidades nuevas deben ser inspeccionables/manipulables desde DEV cuando sea razonable.
 - Presets iniciales son hipótesis de diseño, no balance definitivo.
 - DEV Panel y UI del jugador permanecen conceptualmente separados.
-- `DEV > General > Inventario` representa recursos del jugador; `Depósitos activos` representa reservas del mapa.
+- Inventario del jugador y reservas del mapa son conceptos separados.
 - Sliders DEV actualizan en vivo; campos numéricos permiten escritura libre y confirman al terminar. Ver `BUG-LOCAL-001`.
-- Extractor Mk.I vigente: `1 recurso/s`, `10 recursos/carbón`, buffer `5`, costo `20 hierro + 10 cobre + 10 piedra`, 1×1 sobre depósito.
 - Perfil original no se serializa ni puede sobrescribirse; existen tres perfiles temporales DEV persistentes mediante `localStorage`.
 - Reset gráfico sólo modifica presentación/FX.
 
-## Dirección v0.3 acordada
+## v0.3 — contrato actual de yacimientos
 
-La meta es hacer que espacio y distancia importen. La hoja de ruta conceptual es:
+Preset inicial:
+
+- `2` yacimientos por recurso;
+- `3–7` celdas por yacimiento;
+- `100` recursos por celda;
+- irregularidad `0.7`;
+- crecimiento por vecinos cardinales;
+- no hay solapamiento de celdas;
+- cada celda conserva reserva propia y se agrupa mediante `veinId`;
+- riqueza variable centro/borde todavía no está implementada.
+
+Controles disponibles en `DEV > General > Generación de recursos`: cantidad de yacimientos, tamaños mínimo/máximo, reserva por celda, radio de aparición, irregularidad y regeneración explícita.
+
+La hoja de ruta conceptual se mantiene:
 
 `yacimientos multicelda → almacenamiento local → transporte físico básico → procesamiento/energía/logística avanzada`
 
-El primer paso no es implementar tolvas o carritos. Primero debe cambiar el modelo del mapa para soportar:
-
-- varias celdas por yacimiento;
-- varios yacimientos del mismo recurso;
-- reserva independiente por celda;
-- varios extractores sobre diferentes celdas de un mismo yacimiento;
-- parámetros de generación expuestos en DEV.
-
-Detalles completos en `BITÁCORA_GPT.md`.
-
 ## Próximo punto de reanudación
 
-**Discutir y cerrar el contrato de la subfase 1 de v0.3: yacimientos multicelda.** Definir tamaños, cantidad de yacimientos, riqueza por celda, forma/dispersión, reglas de aparición y comportamiento con extractores/perfiles/resize. Sólo después crear una rama nueva desde `main` e implementar.
-
-Antes o al comenzar esa rama, ejecutar `npm run build` sobre `main` y hacer una regresión corta de v0.2.
+Actualizar el checkout local a `agent/yacimientos-v0-3`, ejecutar `npm run build` y `npm run dev`. Validar visualmente el preset base y luego variar parámetros desde DEV. Confirmar contigüidad, ausencia de solapamiento, minería/extractores por celda, resize y perfiles temporales. No comenzar Tolva/Cajón Mk.I hasta estabilizar esta subfase.
 
 ## Prompt mínimo para un chat nuevo
 
