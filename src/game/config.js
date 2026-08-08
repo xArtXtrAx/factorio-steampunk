@@ -42,6 +42,7 @@ export const DEFAULT_CONFIG = {
   miningRate: 1,
   initialDepositAmount: 100,
   spawnRadius: 5,
+  inventoryEditMax: 100000,
 
   extractorMiningRate: 1,
   extractorResourcesPerCoal: 10,
