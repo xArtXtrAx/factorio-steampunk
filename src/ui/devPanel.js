@@ -40,8 +40,6 @@ function numberControl(label, value, min, max, step, onInput) {
     onInput(next);
   };
 
-  // El slider sigue siendo continuo. El campo numérico se confirma al terminar
-  // (blur/cambio o Enter), para permitir escribir cifras completas sin perder foco.
   range.addEventListener('input', () => sync(range.value));
   number.addEventListener('change', () => sync(number.value));
   number.addEventListener('keydown', (event) => {
@@ -151,7 +149,7 @@ export function mountDevPanel(state, host) {
 
     const original = document.createElement('div');
     original.className = 'profile-card profile-card-locked';
-    original.innerHTML = '<div class="profile-card-heading"><strong>Original · bloqueado</strong><span>BASE CANÓNICA</span></div><p>30×30 · inventario 0 · depósitos iniciales aleatorios · sin extractores. No puede sobrescribirse.</p>';
+    original.innerHTML = '<div class="profile-card-heading"><strong>Original · bloqueado</strong><span>BASE CANÓNICA</span></div><p>30×30 · inventario 0 · yacimientos iniciales aleatorios · sin extractores. No puede sobrescribirse.</p>';
     original.append(actionButton('CARGAR PERFIL ORIGINAL', () => state.resetToDefaults(), 'Restaura siempre DEFAULT_CONFIG y el estado inicial canónico del proyecto.'));
     section.append(original);
 
@@ -206,11 +204,22 @@ export function mountDevPanel(state, host) {
     simulation.innerHTML = '<h2>Simulación</h2>';
     simulation.append(
       numberControl('Extracción manual / s', state.config.miningRate, 0.1, 20, 0.1, (value) => state.setConfig('miningRate', value)),
-      numberControl('Reserva inicial', state.config.initialDepositAmount, 1, 10000, 1, (value) => state.setConfig('initialDepositAmount', value)),
-      numberControl('Radio aparición', state.config.spawnRadius, 1, 14, 1, (value) => state.setConfig('spawnRadius', value)),
-      actionButton('REGENERAR DEPÓSITOS', () => state.regenerateDeposits()),
     );
     host.append(simulation);
+
+    const generation = document.createElement('section');
+    generation.className = 'dev-section';
+    generation.innerHTML = '<h2>Generación de recursos</h2><p class="dev-subsection-note">v0.3: cada recurso aparece en varios yacimientos multicelda. Los cambios de estos parámetros se aplican al pulsar regenerar.</p>';
+    generation.append(
+      numberControl('Yacimientos por recurso', state.config.resourceVeinsPerType, 1, 12, 1, (value) => state.setConfig('resourceVeinsPerType', Math.floor(value))),
+      numberControl('Tamaño mínimo (celdas)', state.config.resourceVeinMinCells, 1, 30, 1, (value) => state.setConfig('resourceVeinMinCells', Math.min(Math.floor(value), Math.floor(state.config.resourceVeinMaxCells)))),
+      numberControl('Tamaño máximo (celdas)', state.config.resourceVeinMaxCells, 1, 30, 1, (value) => state.setConfig('resourceVeinMaxCells', Math.max(Math.floor(value), Math.floor(state.config.resourceVeinMinCells)))),
+      numberControl('Reserva por celda', state.config.initialDepositAmount, 1, 10000, 1, (value) => state.setConfig('initialDepositAmount', value)),
+      numberControl('Radio aparición', state.config.spawnRadius, 1, 30, 1, (value) => state.setConfig('spawnRadius', value)),
+      numberControl('Irregularidad', state.config.resourceVeinIrregularity, 0, 1, 0.05, (value) => state.setConfig('resourceVeinIrregularity', value)),
+      actionButton('REGENERAR YACIMIENTOS', () => state.regenerateDeposits()),
+    );
+    host.append(generation);
 
     const inventory = document.createElement('section');
     inventory.className = 'dev-section';
@@ -231,10 +240,28 @@ export function mountDevPanel(state, host) {
 
     const deposits = document.createElement('section');
     deposits.className = 'dev-section';
-    deposits.innerHTML = '<h2>Depósitos activos</h2>';
+    const veinIds = [...new Set(state.deposits.map((deposit) => deposit.veinId))];
+    deposits.innerHTML = `<h2>Yacimientos activos</h2><p class="dev-subsection-note">${veinIds.length} yacimientos · ${state.deposits.length} celdas de recurso. Cada celda mantiene su reserva propia y puede editarse individualmente.</p>`;
+
+    const grouped = new Map();
     state.deposits.forEach((deposit) => {
-      const meta = RESOURCE_TYPES[deposit.type];
-      deposits.append(numberControl(`${meta.label} [${deposit.x},${deposit.y}]`, deposit.amount, 0, 10000, 1, (value) => state.setDepositAmount(deposit.id, value)));
+      const key = deposit.veinId || `${deposit.type}-legacy-${deposit.id}`;
+      if (!grouped.has(key)) grouped.set(key, []);
+      grouped.get(key).push(deposit);
+    });
+
+    grouped.forEach((cells) => {
+      const first = cells[0];
+      const meta = RESOURCE_TYPES[first.type];
+      const block = document.createElement('div');
+      block.className = 'dev-subsection';
+      block.innerHTML = `<h3>${meta.label} · ${cells.length} celda(s)</h3>`;
+      cells
+        .sort((a, b) => a.y - b.y || a.x - b.x)
+        .forEach((deposit) => {
+          block.append(numberControl(`[${deposit.x},${deposit.y}]`, deposit.amount, 0, 10000, 1, (value) => state.setDepositAmount(deposit.id, value)));
+        });
+      deposits.append(block);
     });
     host.append(deposits);
   };
