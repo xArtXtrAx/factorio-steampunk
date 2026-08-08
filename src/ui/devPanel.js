@@ -1,4 +1,10 @@
 import { RESOURCE_TYPES } from '../game/config.js';
+import {
+  TEMP_PROFILE_COUNT,
+  loadTemporaryStartProfiles,
+  saveTemporaryStartProfile,
+  summarizeTemporaryStartProfile,
+} from '../game/startProfiles.js';
 
 function numberControl(label, value, min, max, step, onInput) {
   const row = document.createElement('label');
@@ -20,15 +26,29 @@ function numberControl(label, value, min, max, step, onInput) {
   number.step = step;
   number.value = value;
 
+  const normalize = (raw) => {
+    const parsed = Number(raw);
+    const fallback = Number(value);
+    const numeric = Number.isFinite(parsed) ? parsed : fallback;
+    return Math.max(Number(min), Math.min(Number(max), numeric));
+  };
+
   const sync = (raw) => {
-    const next = Math.max(Number(min), Math.min(Number(max), Number(raw)));
+    const next = normalize(raw);
     range.value = next;
     number.value = next;
     onInput(next);
   };
 
+  // El slider sigue siendo continuo. El campo numérico se confirma al terminar
+  // (blur/cambio o Enter), para permitir escribir cifras completas sin perder foco.
   range.addEventListener('input', () => sync(range.value));
-  number.addEventListener('input', () => sync(number.value));
+  number.addEventListener('change', () => sync(number.value));
+  number.addEventListener('keydown', (event) => {
+    if (Number(min) >= 0 && (event.key === '-' || event.key === 'Subtract')) event.preventDefault();
+    if (event.key === 'Enter') number.blur();
+  });
+
   fields.append(range, number);
   row.append(fields);
   return row;
@@ -102,42 +122,110 @@ function tabButton(label, tabId, activeTab, onSelect) {
   return button;
 }
 
+function actionButton(label, onClick, title = '') {
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.className = 'brass-button';
+  button.textContent = label;
+  if (title) button.title = title;
+  button.addEventListener('click', onClick);
+  return button;
+}
+
+function formatProfileDate(isoDate) {
+  if (!isoDate) return 'fecha no disponible';
+  const date = new Date(isoDate);
+  if (Number.isNaN(date.getTime())) return 'fecha no disponible';
+  return date.toLocaleString('es-MX', { dateStyle: 'short', timeStyle: 'short' });
+}
+
 export function mountDevPanel(state, host) {
   let activeTab = 'general';
   let rangeDragActive = false;
   let renderPendingAfterDrag = false;
 
+  const renderProfiles = () => {
+    const section = document.createElement('section');
+    section.className = 'dev-section';
+    section.innerHTML = '<h2>Perfiles de arranque</h2><p class="dev-subsection-note">El perfil original está bloqueado y siempre reconstruye nuestro arranque canónico. Los tres perfiles temporales guardan snapshots persistentes en este navegador y pueden sobrescribirse.</p>';
+
+    const original = document.createElement('div');
+    original.className = 'profile-card profile-card-locked';
+    original.innerHTML = '<div class="profile-card-heading"><strong>Original · bloqueado</strong><span>BASE CANÓNICA</span></div><p>30×30 · inventario 0 · depósitos iniciales aleatorios · sin extractores. No puede sobrescribirse.</p>';
+    original.append(actionButton('CARGAR PERFIL ORIGINAL', () => state.resetToDefaults(), 'Restaura siempre DEFAULT_CONFIG y el estado inicial canónico del proyecto.'));
+    section.append(original);
+
+    const slots = loadTemporaryStartProfiles();
+    for (let index = 0; index < TEMP_PROFILE_COUNT; index += 1) {
+      const entry = slots[index];
+      const card = document.createElement('div');
+      card.className = `profile-card${entry ? ' profile-card-saved' : ''}`;
+      card.innerHTML = `<div class="profile-card-heading"><strong>Temporal ${index + 1}</strong><span>${entry ? 'GUARDADO' : 'VACÍO'}</span></div><p>${entry ? `${summarizeTemporaryStartProfile(entry)}<br>Guardado: ${formatProfileDate(entry.savedAt)}` : 'Guarda aquí el estado actual como un comienzo experimental persistente.'}</p>`;
+
+      const actions = document.createElement('div');
+      actions.className = 'profile-actions';
+
+      if (entry) {
+        actions.append(actionButton('CARGAR', () => {
+          const restored = state.restoreStartProfile(entry.snapshot);
+          if (!restored) window.alert(`Temporal ${index + 1} no pudo restaurarse; el snapshot parece incompatible.`);
+        }));
+        actions.append(actionButton('SOBRESCRIBIR', () => {
+          if (!window.confirm(`¿Sobrescribir Temporal ${index + 1} con el estado actual?`)) return;
+          const saved = saveTemporaryStartProfile(index, state.captureStartProfile());
+          if (!saved) window.alert('No fue posible guardar el perfil en el almacenamiento local del navegador.');
+          render();
+        }));
+      } else {
+        actions.append(actionButton('GUARDAR ESTADO ACTUAL', () => {
+          const saved = saveTemporaryStartProfile(index, state.captureStartProfile());
+          if (!saved) window.alert('No fue posible guardar el perfil en el almacenamiento local del navegador.');
+          render();
+        }));
+      }
+
+      card.append(actions);
+      section.append(card);
+    }
+
+    host.append(section);
+  };
+
   const renderGeneral = () => {
+    renderProfiles();
+
     const grid = document.createElement('section');
     grid.className = 'dev-section';
     const totalCells = state.config.gridColumns * state.config.gridRows;
     grid.innerHTML = `<h2>Retícula</h2><p class="dev-subsection-note">Actual: <strong>${state.config.gridColumns} × ${state.config.gridRows}</strong> · ${totalCells.toLocaleString('es-MX')} cuadros. Los recursos conservan sus cantidades y se recolocan proporcionalmente al cambiar el tamaño.</p>`;
-    grid.append(
-      numberControl('Tamaño de retícula (N × N)', state.config.gridColumns, 8, 60, 1, (value) => state.setGridSize(value)),
-    );
+    grid.append(numberControl('Tamaño de retícula (N × N)', state.config.gridColumns, 8, 60, 1, (value) => state.setGridSize(value)));
     host.append(grid);
 
     const simulation = document.createElement('section');
     simulation.className = 'dev-section';
     simulation.innerHTML = '<h2>Simulación</h2>';
     simulation.append(
-      numberControl('Extracción / s', state.config.miningRate, 0.1, 20, 0.1, (value) => state.setConfig('miningRate', value)),
+      numberControl('Extracción manual / s', state.config.miningRate, 0.1, 20, 0.1, (value) => state.setConfig('miningRate', value)),
       numberControl('Reserva inicial', state.config.initialDepositAmount, 1, 10000, 1, (value) => state.setConfig('initialDepositAmount', value)),
       numberControl('Radio aparición', state.config.spawnRadius, 1, 14, 1, (value) => state.setConfig('spawnRadius', value)),
+      actionButton('REGENERAR DEPÓSITOS', () => state.regenerateDeposits()),
     );
-
-    const regenerate = document.createElement('button');
-    regenerate.className = 'brass-button';
-    regenerate.textContent = 'REGENERAR DEPÓSITOS';
-    regenerate.addEventListener('click', () => state.regenerateDeposits());
-    simulation.append(regenerate);
     host.append(simulation);
 
     const inventory = document.createElement('section');
     inventory.className = 'dev-section';
-    inventory.innerHTML = '<h2>Inventario</h2>';
+    inventory.innerHTML = `<h2>Inventario</h2><p class="dev-subsection-note">Los campos numéricos se confirman al terminar de escribir o al pulsar Enter. Valores negativos están bloqueados. Máximo editable actual: <strong>${Math.floor(state.config.inventoryEditMax).toLocaleString('es-MX')}</strong>.</p>`;
+    inventory.append(numberControl(
+      'Límite máximo editable',
+      state.config.inventoryEditMax,
+      1,
+      1000000,
+      1,
+      (value) => state.setConfig('inventoryEditMax', Math.max(1, Math.floor(value))),
+    ));
     Object.entries(RESOURCE_TYPES).forEach(([type, meta]) => {
-      inventory.append(numberControl(meta.label, state.inventory[type], 0, 100000, 1, (value) => state.setInventory(type, value)));
+      const maxEditable = Math.max(1, Math.floor(Number(state.config.inventoryEditMax) || 1));
+      inventory.append(numberControl(meta.label, state.inventory[type], 0, maxEditable, 1, (value) => state.setInventory(type, value)));
     });
     host.append(inventory);
 
@@ -151,17 +239,85 @@ export function mountDevPanel(state, host) {
     host.append(deposits);
   };
 
+  const renderMachines = () => {
+    const mechanics = document.createElement('section');
+    mechanics.className = 'dev-section';
+    mechanics.innerHTML = '<h2>Extractor de combustión Mk.I</h2><p class="dev-subsection-note">Primer sistema automático. El preset inicial produce 1 recurso/s, convierte 1 carbón en 10 unidades de trabajo y cuesta 20 hierro + 10 cobre + 10 piedra.</p>';
+    mechanics.append(
+      numberControl('Producción / s', state.config.extractorMiningRate, 0.1, 20, 0.1, (value) => state.setConfig('extractorMiningRate', value)),
+      numberControl('Recursos por carbón', state.config.extractorResourcesPerCoal, 1, 100, 1, (value) => state.setConfig('extractorResourcesPerCoal', value)),
+      numberControl('Capacidad buffer carbón', state.config.extractorFuelBufferCapacity, 0, 50, 1, (value) => state.setConfig('extractorFuelBufferCapacity', value)),
+      toggleControl('Auto-cargar desde inventario', state.config.extractorAutoLoadFuel, (value) => state.setConfig('extractorAutoLoadFuel', value)),
+      toggleControl('Autoalimentación sobre carbón', state.config.extractorCoalSelfFeed, (value) => state.setConfig('extractorCoalSelfFeed', value)),
+    );
+
+    const economy = document.createElement('div');
+    economy.className = 'dev-subsection';
+    economy.innerHTML = '<h3>Economía y stock</h3><p class="dev-subsection-note">Costos de compra del panel del jugador y cantidad de máquinas no instaladas.</p>';
+    economy.append(
+      numberControl('Costo hierro', state.config.extractorCostIron, 0, 500, 1, (value) => state.setConfig('extractorCostIron', value)),
+      numberControl('Costo cobre', state.config.extractorCostCopper, 0, 500, 1, (value) => state.setConfig('extractorCostCopper', value)),
+      numberControl('Costo piedra', state.config.extractorCostStone, 0, 500, 1, (value) => state.setConfig('extractorCostStone', value)),
+      numberControl('Costo carbón', state.config.extractorCostCoal, 0, 500, 1, (value) => state.setConfig('extractorCostCoal', value)),
+      numberControl('Extractores disponibles', state.extractorStock, 0, 100, 1, (value) => state.setExtractorStock(value)),
+    );
+    mechanics.append(economy);
+
+    const placementNote = document.createElement('p');
+    placementNote.className = 'dev-subsection-note';
+    placementNote.textContent = state.placementMode === 'burnerExtractor'
+      ? 'Modo colocación activo: haz click sobre un depósito sin extractor.'
+      : state.extractorStock > 0
+        ? 'Hay extractores disponibles. Pulsa colocar y selecciona un depósito.'
+        : 'No hay extractores disponibles; compra uno en el panel de juego o ajusta el stock aquí.';
+    mechanics.append(
+      placementNote,
+      actionButton(
+        state.placementMode === 'burnerExtractor' ? 'CANCELAR COLOCACIÓN' : 'COLOCAR EXTRACTOR Mk.I',
+        () => state.placementMode === 'burnerExtractor' ? state.cancelPlacement() : state.beginExtractorPlacement(),
+      ),
+      actionButton('RETIRAR TODOS LOS EXTRACTORES', () => state.removeAllExtractors()),
+    );
+    host.append(mechanics);
+
+    const active = document.createElement('section');
+    active.className = 'dev-section';
+    active.innerHTML = `<h2>Extractores activos</h2><p class="dev-subsection-note">${state.extractors.length} instalado(s) · ${state.extractorStock} disponible(s). Retirar una máquina la devuelve al stock, no a materiales.</p>`;
+
+    if (!state.extractors.length) {
+      const empty = document.createElement('p');
+      empty.className = 'dev-subsection-note';
+      empty.textContent = 'Todavía no hay extractores instalados.';
+      active.append(empty);
+    }
+
+    state.extractors.forEach((extractor, index) => {
+      const deposit = state.deposits.find((item) => item.id === extractor.depositId);
+      const meta = deposit ? RESOURCE_TYPES[deposit.type] : { label: 'Sin depósito' };
+      const coords = deposit ? `[${deposit.x},${deposit.y}]` : '[?,?]';
+      const machine = document.createElement('div');
+      machine.className = 'dev-subsection';
+      machine.innerHTML = `<h3>Extractor ${index + 1} · ${meta.label} ${coords}</h3><p class="dev-subsection-note">Estado: <strong>${extractor.status}</strong> · producido: ${Math.floor(extractor.producedTotal)} · trabajo del combustible: ${extractor.fuelWorkRemaining.toFixed(1)}</p>`;
+      machine.append(
+        toggleControl('Activo', extractor.enabled, (value) => state.setExtractorEnabled(extractor.id, value)),
+        numberControl('Carbón en buffer', extractor.fuelBuffer, 0, Math.max(0, state.config.extractorFuelBufferCapacity), 1, (value) => state.setExtractorFuel(extractor.id, value)),
+        actionButton('RETIRAR EXTRACTOR', () => state.removeExtractor(extractor.id)),
+      );
+      active.append(machine);
+    });
+    host.append(active);
+  };
+
   const renderGraphics = () => {
     const graphicsEnvironment = document.createElement('section');
     graphicsEnvironment.className = 'dev-section';
     graphicsEnvironment.innerHTML = '<h2>Entorno gráfico</h2>';
 
-    const resetGraphics = document.createElement('button');
-    resetGraphics.type = 'button';
-    resetGraphics.className = 'brass-button';
-    resetGraphics.textContent = 'RESTAURAR VALORES GRÁFICOS';
-    resetGraphics.title = 'Restaura únicamente la configuración visual al preset inicial sin modificar simulación, inventario ni depósitos.';
-    resetGraphics.addEventListener('click', () => state.resetGraphicsToDefaults());
+    const resetGraphics = actionButton(
+      'RESTAURAR VALORES GRÁFICOS',
+      () => state.resetGraphicsToDefaults(),
+      'Restaura únicamente la configuración visual al preset inicial sin modificar simulación, inventario, depósitos ni máquinas.',
+    );
 
     graphicsEnvironment.append(
       resetGraphics,
@@ -170,7 +326,7 @@ export function mountDevPanel(state, host) {
 
     const extractionFx = document.createElement('div');
     extractionFx.className = 'dev-subsection';
-    extractionFx.innerHTML = '<h3>Efectos de extracción</h3><p class="dev-subsection-note">Feedback visual sincronizado con cada unidad extraída.</p>';
+    extractionFx.innerHTML = '<h3>Efectos de extracción</h3><p class="dev-subsection-note">Feedback visual sincronizado con cada unidad extraída, manual o automáticamente.</p>';
     extractionFx.append(
       toggleControl('Activar pulso', state.config.pulseEnabled, (value) => state.setConfig('pulseEnabled', value)),
       numberControl('Cantidad de anillos', state.config.pulseRingCount, 1, 6, 1, (value) => state.setConfig('pulseRingCount', value)),
@@ -196,7 +352,20 @@ export function mountDevPanel(state, host) {
       numberControl('Multiplicador temporal', state.config.pulseTimeScale, 0.1, 3, 0.05, (value) => state.setConfig('pulseTimeScale', value)),
     );
 
-    graphicsEnvironment.append(extractionFx);
+    const extractorFx = document.createElement('div');
+    extractorFx.className = 'dev-subsection';
+    extractorFx.innerHTML = '<h3>Extractores</h3><p class="dev-subsection-note">Apariencia de las máquinas de combustión instaladas sobre depósitos.</p>';
+    extractorFx.append(
+      numberControl('Escala visual × celda', state.config.extractorVisualScale, 0.3, 1.2, 0.01, (value) => state.setConfig('extractorVisualScale', value)),
+      numberControl('Velocidad engranaje', state.config.extractorGearSpeed, 0, 5, 0.05, (value) => state.setConfig('extractorGearSpeed', value)),
+      numberControl('Intensidad glow extractor', state.config.extractorGlowIntensity, 0, 1, 0.01, (value) => state.setConfig('extractorGlowIntensity', value)),
+      numberControl('Grosor aro combustible', state.config.extractorFuelRingWidth, 0.5, 10, 0.5, (value) => state.setConfig('extractorFuelRingWidth', value)),
+      colorControl('Color cuerpo extractor', state.config.extractorBodyColor, (value) => state.setConfig('extractorBodyColor', value)),
+      colorControl('Color latón extractor', state.config.extractorBrassColor, (value) => state.setConfig('extractorBrassColor', value)),
+      colorControl('Color glow extractor', state.config.extractorGlowColor, (value) => state.setConfig('extractorGlowColor', value)),
+    );
+
+    graphicsEnvironment.append(extractionFx, extractorFx);
     host.append(graphicsEnvironment);
   };
 
@@ -205,33 +374,27 @@ export function mountDevPanel(state, host) {
 
     const title = document.createElement('div');
     title.className = 'panel-title';
-    title.innerHTML = '<small>FORGE CONTROL</small><h1>DEV PANEL</h1><p>Parámetros vivos de simulación y presentación</p>';
+    title.innerHTML = '<small>FORGE CONTROL</small><h1>DEV PANEL</h1><p>Control total de simulación y presentación durante desarrollo</p>';
     host.append(title);
 
     const tabs = document.createElement('nav');
     tabs.className = 'dev-tabs';
     tabs.setAttribute('aria-label', 'Secciones del panel de desarrollo');
     tabs.append(
-      tabButton('General', 'general', activeTab, (nextTab) => {
-        activeTab = nextTab;
-        render();
-      }),
-      tabButton('Gráficos', 'graphics', activeTab, (nextTab) => {
-        activeTab = nextTab;
-        render();
-      }),
+      tabButton('General', 'general', activeTab, (nextTab) => { activeTab = nextTab; render(); }),
+      tabButton('Máquinas', 'machines', activeTab, (nextTab) => { activeTab = nextTab; render(); }),
+      tabButton('Gráficos', 'graphics', activeTab, (nextTab) => { activeTab = nextTab; render(); }),
     );
     host.append(tabs);
 
-    const reset = document.createElement('button');
-    reset.type = 'button';
-    reset.className = 'brass-button';
-    reset.textContent = 'RESTAURAR VALORES INICIALES';
-    reset.title = 'Restaura todo el juego al estado inicial: configuración, inventario, depósitos y sistemas futuros incluidos en el preset global.';
-    reset.addEventListener('click', () => state.resetToDefaults());
-    host.append(reset);
+    host.append(actionButton(
+      'RESTAURAR VALORES INICIALES',
+      () => state.resetToDefaults(),
+      'Restaura todo el juego al perfil original bloqueado: configuración, inventario, depósitos, máquinas y sistemas futuros incluidos en el preset global.',
+    ));
 
     if (activeTab === 'graphics') renderGraphics();
+    else if (activeTab === 'machines') renderMachines();
     else renderGeneral();
   };
 

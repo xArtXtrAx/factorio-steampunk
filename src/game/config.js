@@ -24,6 +24,14 @@ export const DEFAULT_GRAPHICS_CONFIG = {
   pulseImpactFlash: 0.35,
   pulseFadeMs: 120,
   pulseTimeScale: 1,
+
+  extractorVisualScale: 0.84,
+  extractorGearSpeed: 1.25,
+  extractorGlowIntensity: 0.7,
+  extractorFuelRingWidth: 2.5,
+  extractorBodyColor: '#5b4937',
+  extractorBrassColor: '#c49445',
+  extractorGlowColor: '#58ffe3',
 };
 
 export const DEFAULT_CONFIG = {
@@ -34,5 +42,17 @@ export const DEFAULT_CONFIG = {
   miningRate: 1,
   initialDepositAmount: 100,
   spawnRadius: 5,
+  inventoryEditMax: 100000,
+
+  extractorMiningRate: 1,
+  extractorResourcesPerCoal: 10,
+  extractorFuelBufferCapacity: 5,
+  extractorAutoLoadFuel: true,
+  extractorCoalSelfFeed: true,
+  extractorCostIron: 20,
+  extractorCostCopper: 10,
+  extractorCostStone: 10,
+  extractorCostCoal: 0,
+
   ...DEFAULT_GRAPHICS_CONFIG,
 };

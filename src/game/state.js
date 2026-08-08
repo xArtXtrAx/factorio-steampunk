@@ -13,6 +13,9 @@ export class GameState {
     this.config = { ...DEFAULT_CONFIG };
     this.inventory = Object.fromEntries(Object.keys(RESOURCE_TYPES).map((key) => [key, 0]));
     this.deposits = [];
+    this.extractors = [];
+    this.extractorStock = 0;
+    this.placementMode = null;
     this.miningTargetId = null;
     this.miningAccumulator = 0;
     this.extractionSerial = 0;
@@ -25,7 +28,39 @@ export class GameState {
     this.version += 1;
   }
 
+  getExtractorCost() {
+    return {
+      iron: Math.max(0, Math.floor(Number(this.config.extractorCostIron) || 0)),
+      copper: Math.max(0, Math.floor(Number(this.config.extractorCostCopper) || 0)),
+      stone: Math.max(0, Math.floor(Number(this.config.extractorCostStone) || 0)),
+      coal: Math.max(0, Math.floor(Number(this.config.extractorCostCoal) || 0)),
+    };
+  }
+
+  canAffordExtractor() {
+    const cost = this.getExtractorCost();
+    return Object.entries(cost).every(([type, amount]) => (this.inventory[type] || 0) >= amount);
+  }
+
+  buyExtractor() {
+    if (!this.canAffordExtractor()) return false;
+    const cost = this.getExtractorCost();
+    Object.entries(cost).forEach(([type, amount]) => {
+      this.inventory[type] -= amount;
+    });
+    this.extractorStock += 1;
+    this.touch();
+    return true;
+  }
+
+  setExtractorStock(value) {
+    this.extractorStock = clampInt(value, 0, 9999);
+    if (this.extractorStock <= 0 && this.placementMode === 'burnerExtractor') this.placementMode = null;
+    this.touch();
+  }
+
   regenerateDeposits() {
+    if (this.extractors.length) this.extractorStock += this.extractors.length;
     const centerX = Math.floor(this.config.gridColumns / 2);
     const centerY = Math.floor(this.config.gridRows / 2);
     const used = new Set();
@@ -48,6 +83,8 @@ export class GameState {
       };
     });
 
+    this.extractors = [];
+    this.placementMode = null;
     this.stopMining();
     this.touch();
   }
@@ -55,6 +92,9 @@ export class GameState {
   resetToDefaults() {
     this.config = { ...DEFAULT_CONFIG };
     this.inventory = Object.fromEntries(Object.keys(RESOURCE_TYPES).map((key) => [key, 0]));
+    this.extractors = [];
+    this.extractorStock = 0;
+    this.placementMode = null;
     this.miningTargetId = null;
     this.miningAccumulator = 0;
     this.extractionSerial = 0;
@@ -65,6 +105,98 @@ export class GameState {
   resetGraphicsToDefaults() {
     Object.assign(this.config, DEFAULT_GRAPHICS_CONFIG);
     this.touch();
+  }
+
+  captureStartProfile() {
+    return {
+      schemaVersion: 1,
+      config: { ...this.config },
+      inventory: { ...this.inventory },
+      deposits: this.deposits.map((deposit) => ({ ...deposit })),
+      extractors: this.extractors.map((extractor) => ({ ...extractor })),
+      extractorStock: this.extractorStock,
+    };
+  }
+
+  restoreStartProfile(snapshot) {
+    if (!snapshot || typeof snapshot !== 'object') return false;
+
+    const nextConfig = { ...DEFAULT_CONFIG };
+    Object.entries(DEFAULT_CONFIG).forEach(([key, defaultValue]) => {
+      const candidate = snapshot.config?.[key];
+      if (typeof defaultValue === 'number') {
+        const parsed = Number(candidate);
+        if (Number.isFinite(parsed)) nextConfig[key] = parsed;
+      } else if (typeof defaultValue === 'boolean') {
+        if (typeof candidate === 'boolean') nextConfig[key] = candidate;
+      } else if (typeof defaultValue === 'string') {
+        if (typeof candidate === 'string') nextConfig[key] = candidate;
+      }
+    });
+    nextConfig.gridColumns = clampInt(nextConfig.gridColumns, 8, 60);
+    nextConfig.gridRows = clampInt(nextConfig.gridRows, 8, 60);
+
+    const nextInventory = Object.fromEntries(Object.keys(RESOURCE_TYPES).map((type) => [
+      type,
+      Math.max(0, Number(snapshot.inventory?.[type]) || 0),
+    ]));
+
+    const occupied = new Set();
+    const ids = new Set();
+    const nextDeposits = Array.isArray(snapshot.deposits)
+      ? snapshot.deposits.flatMap((rawDeposit) => {
+        if (!rawDeposit || !(rawDeposit.type in RESOURCE_TYPES)) return [];
+        const x = clampInt(rawDeposit.x, 0, nextConfig.gridColumns - 1);
+        const y = clampInt(rawDeposit.y, 0, nextConfig.gridRows - 1);
+        const cellKey = `${x}:${y}`;
+        if (occupied.has(cellKey)) return [];
+        occupied.add(cellKey);
+        let id = typeof rawDeposit.id === 'string' && rawDeposit.id ? rawDeposit.id : `${rawDeposit.type}-${crypto.randomUUID()}`;
+        if (ids.has(id)) id = `${rawDeposit.type}-${crypto.randomUUID()}`;
+        ids.add(id);
+        return [{
+          id,
+          type: rawDeposit.type,
+          x,
+          y,
+          amount: Math.max(0, Number(rawDeposit.amount) || 0),
+        }];
+      })
+      : [];
+
+    if (!nextDeposits.length) return false;
+
+    const depositIds = new Set(nextDeposits.map((deposit) => deposit.id));
+    const usedDeposits = new Set();
+    const nextExtractors = Array.isArray(snapshot.extractors)
+      ? snapshot.extractors.flatMap((rawExtractor) => {
+        if (!rawExtractor || !depositIds.has(rawExtractor.depositId) || usedDeposits.has(rawExtractor.depositId)) return [];
+        usedDeposits.add(rawExtractor.depositId);
+        return [{
+          id: typeof rawExtractor.id === 'string' && rawExtractor.id ? rawExtractor.id : `extractor-${crypto.randomUUID()}`,
+          depositId: rawExtractor.depositId,
+          fuelBuffer: clampInt(rawExtractor.fuelBuffer, 0, Math.max(0, nextConfig.extractorFuelBufferCapacity)),
+          fuelWorkRemaining: Math.max(0, Number(rawExtractor.fuelWorkRemaining) || 0),
+          workAccumulator: Math.max(0, Number(rawExtractor.workAccumulator) || 0),
+          producedTotal: Math.max(0, Number(rawExtractor.producedTotal) || 0),
+          enabled: rawExtractor.enabled !== false,
+          status: typeof rawExtractor.status === 'string' ? rawExtractor.status : 'en espera',
+        }];
+      })
+      : [];
+
+    this.config = nextConfig;
+    this.inventory = nextInventory;
+    this.deposits = nextDeposits;
+    this.extractors = nextExtractors;
+    this.extractorStock = clampInt(snapshot.extractorStock, 0, 9999);
+    this.placementMode = null;
+    this.miningTargetId = null;
+    this.miningAccumulator = 0;
+    this.extractionSerial = 0;
+    this.lastExtraction = null;
+    this.touch();
+    return true;
   }
 
   setGridSize(value) {
@@ -139,7 +271,161 @@ export class GameState {
     this.touch();
   }
 
+  beginExtractorPlacement() {
+    if (this.extractorStock <= 0) return false;
+    this.placementMode = 'burnerExtractor';
+    this.stopMining();
+    this.touch();
+    return true;
+  }
+
+  cancelPlacement() {
+    if (!this.placementMode) return;
+    this.placementMode = null;
+    this.touch();
+  }
+
+  placeExtractor(depositId) {
+    if (this.placementMode !== 'burnerExtractor' || this.extractorStock <= 0) return false;
+    const deposit = this.deposits.find((item) => item.id === depositId && item.amount > 0);
+    if (!deposit) return false;
+    if (this.extractors.some((extractor) => extractor.depositId === depositId)) return false;
+
+    this.extractors.push({
+      id: `extractor-${crypto.randomUUID()}`,
+      depositId,
+      fuelBuffer: 0,
+      fuelWorkRemaining: 0,
+      workAccumulator: 0,
+      producedTotal: 0,
+      enabled: true,
+      status: 'sin combustible',
+    });
+    this.extractorStock -= 1;
+    this.placementMode = null;
+    this.touch();
+    return true;
+  }
+
+  removeExtractor(id) {
+    const index = this.extractors.findIndex((item) => item.id === id);
+    if (index < 0) return;
+    this.extractors.splice(index, 1);
+    this.extractorStock += 1;
+    this.touch();
+  }
+
+  removeAllExtractors() {
+    if (!this.extractors.length) return;
+    this.extractorStock += this.extractors.length;
+    this.extractors = [];
+    this.touch();
+  }
+
+  setExtractorEnabled(id, enabled) {
+    const extractor = this.extractors.find((item) => item.id === id);
+    if (!extractor) return;
+    extractor.enabled = Boolean(enabled);
+    extractor.status = extractor.enabled ? 'en espera' : 'detenido';
+    this.touch();
+  }
+
+  setExtractorFuel(id, value) {
+    const extractor = this.extractors.find((item) => item.id === id);
+    if (!extractor) return;
+    extractor.fuelBuffer = clampInt(value, 0, Math.max(0, this.config.extractorFuelBufferCapacity));
+    this.touch();
+  }
+
+  autoLoadFuel(extractor) {
+    if (!this.config.extractorAutoLoadFuel) return;
+    const capacity = Math.max(0, Math.floor(this.config.extractorFuelBufferCapacity));
+    const missing = Math.max(0, capacity - extractor.fuelBuffer);
+    if (missing <= 0 || this.inventory.coal <= 0) return;
+    const transferred = Math.min(missing, Math.floor(this.inventory.coal));
+    this.inventory.coal -= transferred;
+    extractor.fuelBuffer += transferred;
+  }
+
+  igniteExtractor(extractor, deposit) {
+    const efficiency = Math.max(1, Number(this.config.extractorResourcesPerCoal) || 1);
+
+    if (extractor.fuelBuffer > 0) {
+      extractor.fuelBuffer -= 1;
+      extractor.fuelWorkRemaining += efficiency;
+      return true;
+    }
+
+    if (this.config.extractorCoalSelfFeed && deposit.type === 'coal' && deposit.amount > 0) {
+      deposit.amount -= 1;
+      extractor.fuelWorkRemaining += efficiency;
+      extractor.status = 'autoalimentando carbón';
+      return true;
+    }
+
+    return false;
+  }
+
+  tickExtractors(deltaSeconds) {
+    const rate = Math.max(0, Number(this.config.extractorMiningRate) || 0);
+    if (rate <= 0) return false;
+    let changed = false;
+
+    this.extractors.forEach((extractor) => {
+      const deposit = this.deposits.find((item) => item.id === extractor.depositId);
+      if (!extractor.enabled) {
+        extractor.status = 'detenido';
+        return;
+      }
+      if (!deposit || deposit.amount <= 0) {
+        extractor.status = 'depósito agotado';
+        extractor.workAccumulator = 0;
+        return;
+      }
+
+      const beforeFuel = extractor.fuelBuffer;
+      const beforeCoal = this.inventory.coal;
+      this.autoLoadFuel(extractor);
+      if (extractor.fuelBuffer !== beforeFuel || this.inventory.coal !== beforeCoal) changed = true;
+
+      if (extractor.fuelWorkRemaining <= 0 && !this.igniteExtractor(extractor, deposit)) {
+        extractor.status = 'sin combustible';
+        return;
+      }
+
+      extractor.status = 'trabajando';
+      extractor.workAccumulator += deltaSeconds * rate;
+      const units = Math.floor(extractor.workAccumulator);
+      if (units < 1) return;
+
+      const possibleByFuel = Math.floor(extractor.fuelWorkRemaining);
+      const extracted = Math.min(units, possibleByFuel, Math.floor(deposit.amount));
+      if (extracted <= 0) return;
+
+      deposit.amount -= extracted;
+      this.inventory[deposit.type] += extracted;
+      extractor.workAccumulator -= extracted;
+      extractor.fuelWorkRemaining -= extracted;
+      extractor.producedTotal += extracted;
+      this.extractionSerial += extracted;
+      this.lastExtraction = {
+        depositId: deposit.id,
+        type: deposit.type,
+        units: extracted,
+        serial: this.extractionSerial,
+        source: 'extractor',
+        extractorId: extractor.id,
+      };
+      changed = true;
+
+      if (deposit.amount <= 0) extractor.status = 'depósito agotado';
+    });
+
+    return changed;
+  }
+
   startMining(id) {
+    if (this.placementMode) return;
     const deposit = this.deposits.find((item) => item.id === id && item.amount > 0);
     if (!deposit) return;
     this.miningTargetId = id;
@@ -155,17 +441,17 @@ export class GameState {
     }
   }
 
-  tick(deltaSeconds) {
-    if (!this.miningTargetId) return;
+  tickManualMining(deltaSeconds) {
+    if (!this.miningTargetId) return false;
     const deposit = this.deposits.find((item) => item.id === this.miningTargetId);
     if (!deposit || deposit.amount <= 0) {
       this.stopMining();
-      return;
+      return false;
     }
 
     this.miningAccumulator += deltaSeconds * this.config.miningRate;
     const units = Math.floor(this.miningAccumulator);
-    if (units < 1) return;
+    if (units < 1) return false;
 
     const extracted = Math.min(units, deposit.amount);
     deposit.amount -= extracted;
@@ -177,9 +463,16 @@ export class GameState {
       type: deposit.type,
       units: extracted,
       serial: this.extractionSerial,
+      source: 'manual',
     };
-    this.touch();
 
     if (deposit.amount <= 0) this.stopMining();
+    return true;
+  }
+
+  tick(deltaSeconds) {
+    const manualChanged = this.tickManualMining(deltaSeconds);
+    const extractorChanged = this.tickExtractors(deltaSeconds);
+    if (manualChanged || extractorChanged) this.touch();
   }
 }
