@@ -15,7 +15,7 @@ Regla operativa:
 - los resets parciales/globales deben evolucionar junto con los nuevos sistemas;
 - sólo se ocultan o fijan parámetros cuando exista una decisión explícita de diseño para hacerlo.
 
-El DEV Panel es una herramienta de experimentación y diagnóstico, no la interfaz final del jugador.
+El DEV Panel es por tanto una herramienta de experimentación y diagnóstico, no la interfaz final del jugador.
 
 ## Estado actual
 
@@ -25,16 +25,16 @@ El DEV Panel es una herramienta de experimentación y diagnóstico, no la interf
 | Objetivo actual | `v0.2 — Extractor Mk.I + economía + perfiles de arranque DEV` |
 | Rama estable | `main` |
 | Rama activa | `agent/extractor-v0-2` |
-| Último checkpoint verificable | `perfiles de arranque original bloqueado + 3 temporales persistentes implementados en rama activa` |
-| Estado del build | `dependencias locales restauradas por el usuario; build del checkpoint de perfiles pendiente de confirmación` |
-| Estado de pruebas | `apariencia general del extractor validada positivamente; economía/panel jugador/perfiles pendientes de recorrido completo` |
+| Último checkpoint verificable | `edición numérica libre del DEV Panel y límite configurable de inventario implementados sobre perfiles/economía` |
+| Estado del build | `dependencias locales restauradas por el usuario; build del checkpoint actual pendiente de confirmación` |
+| Estado de pruebas | `apariencia general del extractor validada positivamente; economía, perfiles e interacción numérica pendientes de recorrido completo` |
 | Cambios locales sin publicar | `ninguno conocido` |
-| Bugs abiertos relevantes | `ninguno registrado` |
+| Bugs abiertos relevantes | `BUG-LOCAL-001 — corrección implementada, validación manual pendiente` |
 | Última actualización | `2026-08-07` |
 
 ## Próximo paso exacto
 
-Actualizar el checkout local de `agent/extractor-v0-2`, ejecutar `npm run build`, arrancar con `npm run dev` y validar dos flujos: (1) compra → stock → colocación → retirada del Extractor Mk.I; (2) guardar, recargar, cargar y sobrescribir los tres perfiles temporales, terminando con carga del perfil original bloqueado para confirmar retorno al arranque canónico.
+Actualizar el checkout local de `agent/extractor-v0-2`, ejecutar `npm run build`, arrancar con `npm run dev` y validar primero `BUG-LOCAL-001`: escribir cifras de varias posiciones en `DEV > General > Inventario`, confirmar con Enter/blur, probar negativos y valores por encima del máximo, cambiar el límite máximo y verificar que se conserva en perfiles temporales y vuelve a `100000` con el perfil original. Después continuar con la validación de economía y perfiles ya pendiente.
 
 ### Criterio de la fase v0.2
 
@@ -59,7 +59,11 @@ Actualizar el checkout local de `agent/extractor-v0-2`, ejecutar `npm run build`
 - [x] Tres perfiles temporales persistentes y sobrescribibles desde `DEV > General`.
 - [x] Snapshots incluyen configuración, inventario, retícula/depósitos, stock y máquinas.
 - [x] Persistencia DEV encapsulada en `localStorage` y documentada en ADR-002.
-- [ ] Build local del checkpoint de perfiles ejecutado y registrado.
+- [x] Campos numéricos DEV permiten escribir cifras completas antes de aplicar el valor.
+- [x] Inventario manual bloquea negativos y usa un máximo configurable desde DEV.
+- [x] `inventoryEditMax` pertenece a `DEFAULT_CONFIG`; base original `100000`, rango DEV hasta `1000000`.
+- [ ] Build local del checkpoint actual ejecutado y registrado.
+- [ ] `BUG-LOCAL-001` validado manualmente.
 - [ ] Validación manual del flujo compra → stock → colocación → retirada.
 - [ ] Validación manual guardar → recargar → cargar → sobrescribir perfiles.
 - [ ] Validación manual completa de combustible, autoalimentación y balance.
@@ -73,6 +77,7 @@ Actualizar el checkout local de `agent/extractor-v0-2`, ejecutar `npm run build`
 - Siempre ejecuta `resetToDefaults()` y reconstruye `DEFAULT_CONFIG`, inventario cero, stock cero, sin máquinas y depósitos iniciales aleatorios según el contrato original.
 - El botón global `RESTAURAR VALORES INICIALES` y `CARGAR PERFIL ORIGINAL` convergen al mismo contrato.
 - Ningún perfil temporal puede sobrescribirlo.
+- El límite original de edición manual de inventario es `100000`.
 
 ### Temporales 1–3
 
@@ -81,6 +86,7 @@ Actualizar el checkout local de `agent/extractor-v0-2`, ejecutar `npm run build`
 - Un slot guardado puede cargarse o sobrescribirse explícitamente; sobrescribir requiere confirmación.
 - Persisten entre recargas del navegador mediante `localStorage`.
 - Cada snapshot contiene `config`, inventario, depósitos con posiciones/cantidades, extractores instalados y `extractorStock`.
+- `inventoryEditMax` se persiste automáticamente dentro de `config`.
 - Al cargar se limpian minería activa, modo de colocación y último evento de extracción.
 - La carga normaliza límites y referencias antes de aplicar el snapshot.
 - Los perfiles son locales al navegador/origen; no son el futuro sistema de guardado del jugador.
@@ -144,7 +150,10 @@ El botón de compra se deshabilita cuando faltan materiales y el botón de coloc
 ### General
 
 - Perfil original bloqueado y tres perfiles temporales persistentes.
-- Retícula, simulación manual, inventario y depósitos.
+- Retícula y simulación manual.
+- Inventario editable con campos numéricos de confirmación diferida: escribir libremente y aplicar al salir o pulsar Enter.
+- Inventario manual con mínimo `0`, negativos bloqueados y máximo `inventoryEditMax` configurable entre `1` y `1000000`; valor base `100000`.
+- Depósitos activos.
 
 ### Máquinas
 
@@ -166,13 +175,14 @@ El botón de compra se deshabilita cuando faltan materiales y el botón de coloc
 
 ## Contratos de estado
 
-- `DEFAULT_CONFIG` es la fuente de verdad del estado/configuración inicial global e incluye mecánica y costos del extractor.
+- `DEFAULT_CONFIG` es la fuente de verdad del estado/configuración inicial global e incluye mecánica, costos del extractor e `inventoryEditMax`.
 - `DEFAULT_GRAPHICS_CONFIG` contiene el preset visual del extractor.
 - `resetToDefaults()` define el perfil original bloqueado y debe evolucionar con todos los sistemas futuros.
 - `captureStartProfile()` serializa el estado estable requerido para un comienzo experimental.
 - `restoreStartProfile()` valida/restaura snapshots y elimina estados transitorios.
 - `resetGraphicsToDefaults()` sólo modifica parámetros visuales y preserva inventario, depósitos, extractores y stock.
 - Regenerar depósitos invalida sus IDs; las máquinas instaladas se recuperan al stock antes de regenerar.
+- Los sliders continúan aplicando valores mediante `input`; los campos numéricos de `numberControl()` aplican mediante `change`/Enter para no perder foco al teclear.
 
 ## Arquitectura vigente
 
@@ -193,6 +203,7 @@ El botón de compra se deshabilita cuando faltan materiales y el botón de coloc
 | `ADR-001` | PixiJS + Vite y separación simulación/render/UI | Rendimiento 2D y expansión modular |
 | `ADR-002` | Tres perfiles DEV temporales en `localStorage`, original fuera de persistencia | Experimentación persistente sin convertir DEV en sistema de saves |
 | `DEV-001` | Toda mecánica nueva expone parámetros relevantes en DEV | Permitir evaluación conjunta y tuning antes de fijar balance |
+| `UI-002` | Sliders continuos; campos numéricos confirman al terminar | Mantener drag fluido y edición textual sin pérdida de foco |
 | `MACHINE-001` | Extractor Mk.I 1×1 ligado a depósito | Mantener legibilidad espacial en la primera automatización |
 | `FUEL-001` | Trabajo de combustible expresado en recursos por carbón | Relación fácil de entender y tunear (`1 → 10` inicial) |
 | `ECON-001` | Extractor cuesta 20 hierro + 10 cobre + 10 piedra | Crear una fase manual breve antes de automatizar |
@@ -204,7 +215,8 @@ El botón de compra se deshabilita cuando faltan materiales y el botón de coloc
 
 | Estado | Riesgo | Acción siguiente |
 |---|---|---|
-| Abierto | Checkpoint de perfiles todavía no compilado localmente | ejecutar `npm run build` |
+| Abierto | Checkpoint actual todavía no compilado localmente | ejecutar `npm run build` |
+| Abierto | `BUG-LOCAL-001` no validado manualmente después de la corrección | probar escritura continua, Enter/blur, negativos y máximo |
 | Abierto | Persistencia `localStorage` no recorrida manualmente | guardar los 3 slots, recargar y cargar |
 | Abierto | Sobrescritura y aislamiento entre slots no validados | sobrescribir uno y verificar que los otros no cambian |
 | Abierto | Compra y estados disabled no recorridos manualmente | probar inventario insuficiente/exacto/excedente |
@@ -222,18 +234,28 @@ npm run dev
 
 Validación manual sugerida:
 
-1. Crear un estado A con inventario/dimensiones reconocibles y guardarlo en `Temporal 1`.
-2. Crear estados B y C distintos y guardarlos en `Temporal 2` y `Temporal 3`.
-3. Recargar el navegador y confirmar que los tres slots siguen guardados.
-4. Cargar A/B/C y comprobar retícula, inventario, depósitos, stock y máquinas.
-5. Sobrescribir sólo `Temporal 2`; verificar que 1 y 3 permanecen intactos.
-6. Cargar `Original · bloqueado` y confirmar 30×30, inventario/stock cero, sin máquinas y configuración base.
-7. Con inventario vacío, confirmar que `COMPRAR EXTRACTOR` está deshabilitado.
-8. Reunir exactamente 20 hierro, 10 cobre y 10 piedra; comprar y verificar descuento y stock `1`.
-9. Colocar sobre carbón, validar autoalimentación y después retirar/recolocar.
+1. En `General > Inventario`, escribir `250`, `12345` y otro valor de varias cifras sin perder foco entre dígitos.
+2. Confirmar una cifra con Enter y otra haciendo click fuera del campo.
+3. Intentar introducir `-1` y pegar un valor negativo: el recurso no debe quedar por debajo de `0`.
+4. Fijar `Límite máximo editable` en `500`, introducir `800` en un recurso y comprobar que termina en `500`.
+5. Guardar ese límite en `Temporal 1`, cambiarlo, cargar el perfil y confirmar restauración; cargar `Original · bloqueado` y confirmar `100000`.
+6. Crear estados A/B/C distintos y guardar los tres temporales; recargar navegador y comprobar persistencia.
+7. Sobrescribir sólo `Temporal 2`; verificar que 1 y 3 permanecen intactos.
+8. Con inventario vacío, confirmar que `COMPRAR EXTRACTOR` está deshabilitado.
+9. Reunir exactamente 20 hierro, 10 cobre y 10 piedra; comprar, colocar sobre carbón, validar autoalimentación y retirar/recolocar.
 10. Usar reset gráfico y confirmar que no altera economía, perfiles guardados ni estado jugable.
 
 ## Historial cronológico
+
+### 2026-08-07 — Edición libre y límite del inventario DEV
+
+- Registrado `BUG-LOCAL-001`: los campos numéricos perdían foco al modificar estado con cada tecla.
+- Separada la semántica de controles: sliders continúan en vivo; campos numéricos confirman al terminar (`change`/Enter).
+- Añadido bloqueo de negativos para controles con mínimo no negativo.
+- Añadido `inventoryEditMax` al preset canónico, valor base `100000` y máximo ajustable en DEV de `1000000`.
+- Los campos manuales de recursos usan ese límite como máximo.
+- El nuevo parámetro queda incluido automáticamente en perfiles temporales y reset original.
+- Revisión estructural remota completada; build y validación manual pendientes.
 
 ### 2026-08-07 — Perfiles de arranque DEV
 
