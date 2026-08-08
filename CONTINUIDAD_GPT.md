@@ -14,7 +14,7 @@ Este archivo es el punto de entrada permanente para reanudar el proyecto sin dep
 | Estado | `primer checkpoint implementado remotamente; build y validación local pendientes` |
 | Commit remoto de referencia | `64b69ef694a77e48c9c4d9f1eea1789b45a72b06` |
 | Merge v0.2 | `5e13885a061a17e616f44496c72f1ce215700ba3` |
-| PR activo | `pendiente de crear para agent/yacimientos-v0-3` |
+| PR activo | `#3 Implementa yacimientos multicelda v0.3 (draft)` |
 | Validación | `v0.3 sólo revisión estructural remota; v0.2 conserva deuda de regresión sistemática documentada` |
 | Bugs abiertos | `BUG-LOCAL-001 — corrección implementada, validación manual pendiente` |
 | Última actualización | `2026-08-07` |
