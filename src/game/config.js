@@ -42,6 +42,10 @@ export const DEFAULT_CONFIG = {
   miningRate: 1,
   initialDepositAmount: 100,
   spawnRadius: 5,
+  resourceVeinsPerType: 2,
+  resourceVeinMinCells: 3,
+  resourceVeinMaxCells: 7,
+  resourceVeinIrregularity: 0.7,
   inventoryEditMax: 100000,
 
   extractorMiningRate: 1,
