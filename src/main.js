@@ -1,4 +1,5 @@
 import './styles.css';
+import './ui/devProfiles.css';
 import { RESOURCE_TYPES } from './game/config.js';
 import { GameState } from './game/state.js';
 import { GameRenderer } from './game/renderer.js';
