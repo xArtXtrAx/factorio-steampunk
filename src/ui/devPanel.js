@@ -1,4 +1,10 @@
 import { RESOURCE_TYPES } from '../game/config.js';
+import {
+  TEMP_PROFILE_COUNT,
+  loadTemporaryStartProfiles,
+  saveTemporaryStartProfile,
+  summarizeTemporaryStartProfile,
+} from '../game/startProfiles.js';
 
 function numberControl(label, value, min, max, step, onInput) {
   const row = document.createElement('label');
@@ -112,12 +118,65 @@ function actionButton(label, onClick, title = '') {
   return button;
 }
 
+function formatProfileDate(isoDate) {
+  if (!isoDate) return 'fecha no disponible';
+  const date = new Date(isoDate);
+  if (Number.isNaN(date.getTime())) return 'fecha no disponible';
+  return date.toLocaleString('es-MX', { dateStyle: 'short', timeStyle: 'short' });
+}
+
 export function mountDevPanel(state, host) {
   let activeTab = 'general';
   let rangeDragActive = false;
   let renderPendingAfterDrag = false;
 
+  const renderProfiles = () => {
+    const section = document.createElement('section');
+    section.className = 'dev-section';
+    section.innerHTML = '<h2>Perfiles de arranque</h2><p class="dev-subsection-note">El perfil original está bloqueado y siempre reconstruye nuestro arranque canónico. Los tres perfiles temporales guardan snapshots persistentes en este navegador y pueden sobrescribirse.</p>';
+
+    const original = document.createElement('div');
+    original.className = 'profile-card profile-card-locked';
+    original.innerHTML = '<div class="profile-card-heading"><strong>Original · bloqueado</strong><span>BASE CANÓNICA</span></div><p>30×30 · inventario 0 · depósitos iniciales aleatorios · sin extractores. No puede sobrescribirse.</p>';
+    original.append(actionButton('CARGAR PERFIL ORIGINAL', () => state.resetToDefaults(), 'Restaura siempre DEFAULT_CONFIG y el estado inicial canónico del proyecto.'));
+    section.append(original);
+
+    const slots = loadTemporaryStartProfiles();
+    for (let index = 0; index < TEMP_PROFILE_COUNT; index += 1) {
+      const entry = slots[index];
+      const card = document.createElement('div');
+      card.className = `profile-card${entry ? ' profile-card-saved' : ''}`;
+      card.innerHTML = `<div class="profile-card-heading"><strong>Temporal ${index + 1}</strong><span>${entry ? 'GUARDADO' : 'VACÍO'}</span></div><p>${entry ? `${summarizeTemporaryStartProfile(entry)}<br>Guardado: ${formatProfileDate(entry.savedAt)}` : 'Guarda aquí el estado actual como un comienzo experimental persistente.'}</p>`;
+
+      const actions = document.createElement('div');
+      actions.className = 'profile-actions';
+
+      if (entry) {
+        actions.append(actionButton('CARGAR', () => state.restoreStartProfile(entry.snapshot)));
+        actions.append(actionButton('SOBRESCRIBIR', () => {
+          if (!window.confirm(`¿Sobrescribir Temporal ${index + 1} con el estado actual?`)) return;
+          const saved = saveTemporaryStartProfile(index, state.captureStartProfile());
+          if (!saved) window.alert('No fue posible guardar el perfil en el almacenamiento local del navegador.');
+          render();
+        }));
+      } else {
+        actions.append(actionButton('GUARDAR ESTADO ACTUAL', () => {
+          const saved = saveTemporaryStartProfile(index, state.captureStartProfile());
+          if (!saved) window.alert('No fue posible guardar el perfil en el almacenamiento local del navegador.');
+          render();
+        }));
+      }
+
+      card.append(actions);
+      section.append(card);
+    }
+
+    host.append(section);
+  };
+
   const renderGeneral = () => {
+    renderProfiles();
+
     const grid = document.createElement('section');
     grid.className = 'dev-section';
     const totalCells = state.config.gridColumns * state.config.gridRows;
@@ -305,7 +364,7 @@ export function mountDevPanel(state, host) {
     host.append(actionButton(
       'RESTAURAR VALORES INICIALES',
       () => state.resetToDefaults(),
-      'Restaura todo el juego al estado inicial: configuración, inventario, depósitos, máquinas y sistemas futuros incluidos en el preset global.',
+      'Restaura todo el juego al perfil original bloqueado: configuración, inventario, depósitos, máquinas y sistemas futuros incluidos en el preset global.',
     ));
 
     if (activeTab === 'graphics') renderGraphics();
