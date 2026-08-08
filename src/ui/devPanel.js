@@ -157,7 +157,7 @@ export function mountDevPanel(state, host) {
   const renderMachines = () => {
     const mechanics = document.createElement('section');
     mechanics.className = 'dev-section';
-    mechanics.innerHTML = '<h2>Extractor de combustión Mk.I</h2><p class="dev-subsection-note">Primer sistema automático. El preset inicial produce 1 recurso/s y convierte 1 carbón en 10 unidades de trabajo.</p>';
+    mechanics.innerHTML = '<h2>Extractor de combustión Mk.I</h2><p class="dev-subsection-note">Primer sistema automático. El preset inicial produce 1 recurso/s, convierte 1 carbón en 10 unidades de trabajo y cuesta 20 hierro + 10 cobre + 10 piedra.</p>';
     mechanics.append(
       numberControl('Producción / s', state.config.extractorMiningRate, 0.1, 20, 0.1, (value) => state.setConfig('extractorMiningRate', value)),
       numberControl('Recursos por carbón', state.config.extractorResourcesPerCoal, 1, 100, 1, (value) => state.setConfig('extractorResourcesPerCoal', value)),
@@ -166,11 +166,25 @@ export function mountDevPanel(state, host) {
       toggleControl('Autoalimentación sobre carbón', state.config.extractorCoalSelfFeed, (value) => state.setConfig('extractorCoalSelfFeed', value)),
     );
 
+    const economy = document.createElement('div');
+    economy.className = 'dev-subsection';
+    economy.innerHTML = '<h3>Economía y stock</h3><p class="dev-subsection-note">Costos de compra del panel del jugador y cantidad de máquinas no instaladas.</p>';
+    economy.append(
+      numberControl('Costo hierro', state.config.extractorCostIron, 0, 500, 1, (value) => state.setConfig('extractorCostIron', value)),
+      numberControl('Costo cobre', state.config.extractorCostCopper, 0, 500, 1, (value) => state.setConfig('extractorCostCopper', value)),
+      numberControl('Costo piedra', state.config.extractorCostStone, 0, 500, 1, (value) => state.setConfig('extractorCostStone', value)),
+      numberControl('Costo carbón', state.config.extractorCostCoal, 0, 500, 1, (value) => state.setConfig('extractorCostCoal', value)),
+      numberControl('Extractores disponibles', state.extractorStock, 0, 100, 1, (value) => state.setExtractorStock(value)),
+    );
+    mechanics.append(economy);
+
     const placementNote = document.createElement('p');
     placementNote.className = 'dev-subsection-note';
     placementNote.textContent = state.placementMode === 'burnerExtractor'
       ? 'Modo colocación activo: haz click sobre un depósito sin extractor.'
-      : 'Pulsa colocar y después selecciona un depósito en la retícula.';
+      : state.extractorStock > 0
+        ? 'Hay extractores disponibles. Pulsa colocar y selecciona un depósito.'
+        : 'No hay extractores disponibles; compra uno en el panel de juego o ajusta el stock aquí.';
     mechanics.append(
       placementNote,
       actionButton(
@@ -183,7 +197,7 @@ export function mountDevPanel(state, host) {
 
     const active = document.createElement('section');
     active.className = 'dev-section';
-    active.innerHTML = `<h2>Extractores activos</h2><p class="dev-subsection-note">${state.extractors.length} instalado(s). El carbón del buffer se carga automáticamente desde el inventario cuando la opción está activa.</p>`;
+    active.innerHTML = `<h2>Extractores activos</h2><p class="dev-subsection-note">${state.extractors.length} instalado(s) · ${state.extractorStock} disponible(s). Retirar una máquina la devuelve al stock, no a materiales.</p>`;
 
     if (!state.extractors.length) {
       const empty = document.createElement('p');
@@ -195,9 +209,10 @@ export function mountDevPanel(state, host) {
     state.extractors.forEach((extractor, index) => {
       const deposit = state.deposits.find((item) => item.id === extractor.depositId);
       const meta = deposit ? RESOURCE_TYPES[deposit.type] : { label: 'Sin depósito' };
+      const coords = deposit ? `[${deposit.x},${deposit.y}]` : '[?,?]';
       const machine = document.createElement('div');
       machine.className = 'dev-subsection';
-      machine.innerHTML = `<h3>Extractor ${index + 1} · ${meta.label}</h3><p class="dev-subsection-note">Estado: <strong>${extractor.status}</strong> · producido: ${Math.floor(extractor.producedTotal)} · trabajo del combustible: ${extractor.fuelWorkRemaining.toFixed(1)}</p>`;
+      machine.innerHTML = `<h3>Extractor ${index + 1} · ${meta.label} ${coords}</h3><p class="dev-subsection-note">Estado: <strong>${extractor.status}</strong> · producido: ${Math.floor(extractor.producedTotal)} · trabajo del combustible: ${extractor.fuelWorkRemaining.toFixed(1)}</p>`;
       machine.append(
         toggleControl('Activo', extractor.enabled, (value) => state.setExtractorEnabled(extractor.id, value)),
         numberControl('Carbón en buffer', extractor.fuelBuffer, 0, Math.max(0, state.config.extractorFuelBufferCapacity), 1, (value) => state.setExtractorFuel(extractor.id, value)),
