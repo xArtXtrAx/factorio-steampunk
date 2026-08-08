@@ -12,7 +12,7 @@ Este archivo es el punto de entrada permanente para reanudar el proyecto sin dep
 | Fase integrada | `v0.2 — Extractor Mk.I + economía + perfiles de arranque DEV` |
 | Estado | `PR #2 integrado; listo para discutir y definir la siguiente fase` |
 | Merge v0.2 | `5e13885a061a17e616f44496c72f1ce215700ba3` |
-| Último commit documental | `b0e97212dc4f62f83f29fa593c6675ea1a0c9920` |
+| Bitácora de cierre | `b0e97212dc4f62f83f29fa593c6675ea1a0c9920` |
 | Base v0.1 | `fe55692aa95adea043c19d8f1f8b121003c5c1d9` |
 | PR activo | `ninguno` |
 | Validación | `apariencia general/minimalista del extractor validada positivamente; checkpoint final integrado conserva deuda de build/regresión sistemática documentada en BITÁCORA_GPT.md` |
