@@ -22,19 +22,19 @@ El DEV Panel es una herramienta de experimentación y diagnóstico, no la interf
 | Campo | Valor |
 |---|---|
 | Proyecto | `factorio-steampunk` |
-| Objetivo actual | `v0.2 — Extractor de combustión Mk.I + economía inicial` |
+| Objetivo actual | `v0.2 — Extractor Mk.I + economía + perfiles de arranque DEV` |
 | Rama estable | `main` |
 | Rama activa | `agent/extractor-v0-2` |
-| Último checkpoint verificable | `compra, stock, colocación y panel jugador de extractores publicados en rama activa` |
-| Estado del build | `dependencias locales restauradas por el usuario; build de este checkpoint concreto pendiente de confirmación` |
-| Estado de pruebas | `apariencia general del extractor validada positivamente por el usuario; economía/panel jugador y loop completo pendientes` |
+| Último checkpoint verificable | `perfiles de arranque original bloqueado + 3 temporales persistentes implementados en rama activa` |
+| Estado del build | `dependencias locales restauradas por el usuario; build del checkpoint de perfiles pendiente de confirmación` |
+| Estado de pruebas | `apariencia general del extractor validada positivamente; economía/panel jugador/perfiles pendientes de recorrido completo` |
 | Cambios locales sin publicar | `ninguno conocido` |
 | Bugs abiertos relevantes | `ninguno registrado` |
 | Última actualización | `2026-08-07` |
 
 ## Próximo paso exacto
 
-Actualizar el checkout local de `agent/extractor-v0-2`, ejecutar `npm run build`, arrancar con `npm run dev` y validar el nuevo loop económico: reunir materiales, comprar un extractor desde el panel del juego, comprobar stock disponible, colocarlo sobre un depósito, verificar ubicación/estado en el panel y confirmar que retirar la máquina la devuelve al stock sin reembolsar materiales.
+Actualizar el checkout local de `agent/extractor-v0-2`, ejecutar `npm run build`, arrancar con `npm run dev` y validar dos flujos: (1) compra → stock → colocación → retirada del Extractor Mk.I; (2) guardar, recargar, cargar y sobrescribir los tres perfiles temporales, terminando con carga del perfil original bloqueado para confirmar retorno al arranque canónico.
 
 ### Criterio de la fase v0.2
 
@@ -55,9 +55,37 @@ Actualizar el checkout local de `agent/extractor-v0-2`, ejecutar `npm run build`
 - [x] Costos y stock expuestos como interactuables en `DEV > Máquinas`.
 - [x] `Gráficos > Extractores` mantiene tuning visual completo.
 - [x] Reset global elimina máquinas/stock y devuelve parámetros al preset inicial.
-- [ ] Build local del checkpoint de economía/panel ejecutado y registrado.
+- [x] Perfil original de arranque protegido mediante `DEFAULT_CONFIG` + `resetToDefaults()`.
+- [x] Tres perfiles temporales persistentes y sobrescribibles desde `DEV > General`.
+- [x] Snapshots incluyen configuración, inventario, retícula/depósitos, stock y máquinas.
+- [x] Persistencia DEV encapsulada en `localStorage` y documentada en ADR-002.
+- [ ] Build local del checkpoint de perfiles ejecutado y registrado.
 - [ ] Validación manual del flujo compra → stock → colocación → retirada.
+- [ ] Validación manual guardar → recargar → cargar → sobrescribir perfiles.
 - [ ] Validación manual completa de combustible, autoalimentación y balance.
+
+## Perfiles de arranque DEV
+
+### Perfil original · bloqueado
+
+- Es la base canónica establecida desde el inicio del proyecto.
+- No es un snapshot editable ni se almacena en navegador.
+- Siempre ejecuta `resetToDefaults()` y reconstruye `DEFAULT_CONFIG`, inventario cero, stock cero, sin máquinas y depósitos iniciales aleatorios según el contrato original.
+- El botón global `RESTAURAR VALORES INICIALES` y `CARGAR PERFIL ORIGINAL` convergen al mismo contrato.
+- Ningún perfil temporal puede sobrescribirlo.
+
+### Temporales 1–3
+
+- Existen tres slots persistentes.
+- Un slot vacío puede guardar el estado actual.
+- Un slot guardado puede cargarse o sobrescribirse explícitamente; sobrescribir requiere confirmación.
+- Persisten entre recargas del navegador mediante `localStorage`.
+- Cada snapshot contiene `config`, inventario, depósitos con posiciones/cantidades, extractores instalados y `extractorStock`.
+- Al cargar se limpian minería activa, modo de colocación y último evento de extracción.
+- La carga normaliza límites y referencias antes de aplicar el snapshot.
+- Los perfiles son locales al navegador/origen; no son el futuro sistema de guardado del jugador.
+
+Referencia arquitectónica: `docs/decisiones/ADR-002-perfiles-dev-localstorage.md`.
 
 ## Diseño funcional vigente del Extractor Mk.I
 
@@ -88,7 +116,7 @@ Los extractores tienen estado inspeccionable: activo/detenido, trabajando, sin c
 
 ## UI del jugador
 
-Se añadió `src/ui/playerPanel.js`, montado dentro de `#game-shell`, separado del DEV Panel.
+`src/ui/playerPanel.js` vive dentro de `#game-shell`, separado del DEV Panel.
 
 El panel `TALLER DE CAMPO — Extractores Mk.I` muestra:
 
@@ -115,6 +143,7 @@ El botón de compra se deshabilita cuando faltan materiales y el botón de coloc
 
 ### General
 
+- Perfil original bloqueado y tres perfiles temporales persistentes.
 - Retícula, simulación manual, inventario y depósitos.
 
 ### Máquinas
@@ -139,7 +168,9 @@ El botón de compra se deshabilita cuando faltan materiales y el botón de coloc
 
 - `DEFAULT_CONFIG` es la fuente de verdad del estado/configuración inicial global e incluye mecánica y costos del extractor.
 - `DEFAULT_GRAPHICS_CONFIG` contiene el preset visual del extractor.
-- `resetToDefaults()` debe devolver todos los sistemas, incluidos extractores y stock, al estado inicial.
+- `resetToDefaults()` define el perfil original bloqueado y debe evolucionar con todos los sistemas futuros.
+- `captureStartProfile()` serializa el estado estable requerido para un comienzo experimental.
+- `restoreStartProfile()` valida/restaura snapshots y elimina estados transitorios.
 - `resetGraphicsToDefaults()` sólo modifica parámetros visuales y preserva inventario, depósitos, extractores y stock.
 - Regenerar depósitos invalida sus IDs; las máquinas instaladas se recuperan al stock antes de regenerar.
 
@@ -147,10 +178,12 @@ El botón de compra se deshabilita cuando faltan materiales y el botón de coloc
 
 - PixiJS 8.19.0 + Vite 8.1.5.
 - `src/game/config.js`: recursos, balance, costos y presets gráficos.
-- `src/game/state.js`: minería manual, retícula, compra, stock, extractores, combustible y resets.
+- `src/game/state.js`: minería manual, retícula, compra, stock, extractores, combustible, snapshots y resets.
+- `src/game/startProfiles.js`: persistencia local versionada de tres perfiles temporales DEV.
 - `src/game/renderer.js`: retícula, depósitos, máquinas y FX.
 - `src/ui/playerPanel.js`: interfaz de jugador para compra, stock, colocación y ubicaciones.
-- `src/ui/devPanel.js`: tabs `General`, `Máquinas`, `Gráficos` y controles vivos.
+- `src/ui/devPanel.js`: tabs `General`, `Máquinas`, `Gráficos`, perfiles y controles vivos.
+- `src/ui/devProfiles.css`: presentación de slots de perfiles DEV.
 - `src/main.js`: composición, HUD y montaje de UI.
 
 ## Decisiones activas
@@ -158,6 +191,7 @@ El botón de compra se deshabilita cuando faltan materiales y el botón de coloc
 | ID | Decisión | Motivo |
 |---|---|---|
 | `ADR-001` | PixiJS + Vite y separación simulación/render/UI | Rendimiento 2D y expansión modular |
+| `ADR-002` | Tres perfiles DEV temporales en `localStorage`, original fuera de persistencia | Experimentación persistente sin convertir DEV en sistema de saves |
 | `DEV-001` | Toda mecánica nueva expone parámetros relevantes en DEV | Permitir evaluación conjunta y tuning antes de fijar balance |
 | `MACHINE-001` | Extractor Mk.I 1×1 ligado a depósito | Mantener legibilidad espacial en la primera automatización |
 | `FUEL-001` | Trabajo de combustible expresado en recursos por carbón | Relación fácil de entender y tunear (`1 → 10` inicial) |
@@ -170,11 +204,13 @@ El botón de compra se deshabilita cuando faltan materiales y el botón de coloc
 
 | Estado | Riesgo | Acción siguiente |
 |---|---|---|
-| Abierto | Checkpoint de economía/UI todavía no compilado localmente | ejecutar `npm run build` |
+| Abierto | Checkpoint de perfiles todavía no compilado localmente | ejecutar `npm run build` |
+| Abierto | Persistencia `localStorage` no recorrida manualmente | guardar los 3 slots, recargar y cargar |
+| Abierto | Sobrescritura y aislamiento entre slots no validados | sobrescribir uno y verificar que los otros no cambian |
 | Abierto | Compra y estados disabled no recorridos manualmente | probar inventario insuficiente/exacto/excedente |
 | Abierto | Flujo de stock/retirada no recorrido manualmente | comprar, colocar, retirar y recolocar |
 | Abierto | Panel jugador puede solaparse visualmente en configuraciones extremas | validar 8×8, 30×30 y 60×60 |
-| Abierto | Balance 20/10/10 y 1 carbón → 10 recursos es provisional | experimentar desde DEV Panel |
+| Abierto | Balance 20/10/10 y 1 carbón → 10 recursos es provisional | experimentar desde DEV Panel/perfiles |
 
 ## Cómo ejecutar y verificar
 
@@ -186,17 +222,27 @@ npm run dev
 
 Validación manual sugerida:
 
-1. Con inventario vacío, confirmar que `COMPRAR EXTRACTOR` está deshabilitado.
-2. Reunir exactamente 20 hierro, 10 cobre y 10 piedra; comprar y verificar descuento a cero y stock `1`.
-3. Pulsar colocar y seleccionar carbón: stock debe bajar a `0`, instalados subir a `1` y aparecer la coordenada correcta.
-4. Confirmar autoalimentación del extractor de carbón con inventario de carbón vacío.
-5. Comprar otro extractor y colocarlo sobre hierro; comprobar alimentación desde carbón del inventario.
-6. Retirar una máquina desde DEV: debe volver al stock sin devolver materiales.
-7. Modificar costos/stock desde DEV y verificar actualización inmediata del panel jugador.
-8. Usar reset gráfico y confirmar que no cambia economía/estado.
-9. Usar reset global y confirmar stock `0`, extractores `0`, inventario `0` y costos base restaurados.
+1. Crear un estado A con inventario/dimensiones reconocibles y guardarlo en `Temporal 1`.
+2. Crear estados B y C distintos y guardarlos en `Temporal 2` y `Temporal 3`.
+3. Recargar el navegador y confirmar que los tres slots siguen guardados.
+4. Cargar A/B/C y comprobar retícula, inventario, depósitos, stock y máquinas.
+5. Sobrescribir sólo `Temporal 2`; verificar que 1 y 3 permanecen intactos.
+6. Cargar `Original · bloqueado` y confirmar 30×30, inventario/stock cero, sin máquinas y configuración base.
+7. Con inventario vacío, confirmar que `COMPRAR EXTRACTOR` está deshabilitado.
+8. Reunir exactamente 20 hierro, 10 cobre y 10 piedra; comprar y verificar descuento y stock `1`.
+9. Colocar sobre carbón, validar autoalimentación y después retirar/recolocar.
+10. Usar reset gráfico y confirmar que no altera economía, perfiles guardados ni estado jugable.
 
 ## Historial cronológico
+
+### 2026-08-07 — Perfiles de arranque DEV
+
+- Añadido perfil original bloqueado respaldado por `DEFAULT_CONFIG` + `resetToDefaults()`.
+- Añadidos tres perfiles temporales persistentes y sobrescribibles.
+- Los temporales capturan configuración, inventario, depósitos/posiciones, stock y máquinas.
+- Persistencia implementada con `localStorage` versionado y aislada del futuro guardado del jugador.
+- Registrado `ADR-002`.
+- Build y validación manual del checkpoint pendientes.
 
 ### 2026-08-07 — Economía inicial y panel jugador de extractores
 
